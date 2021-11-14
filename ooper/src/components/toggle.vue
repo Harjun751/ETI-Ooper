@@ -1,9 +1,11 @@
 <template>
-    <div @click="toggleMode">
-        <span :class="{ active: passenger==false}">driver</span>
-        <span :class="{ active: passenger==true}">passenger</span>
+    <div>
+        <div id="toggler" @click="toggleMode">
+            <span :class="{ active: passenger==false}">driver</span>
+            <span :class="{ active: passenger==true}">passenger</span>
+        </div>
+        <div id="slider" :class="{passenger:passenger==true, driver:passenger==false}"></div>
     </div>
-    <div id="slider" :class="{passenger:passenger==true, driver:passenger==false}"></div>
 </template>
 
 <script>
@@ -23,7 +25,7 @@ export default{
 </script>
 
 <style scoped>
-div{
+#toggler{
     cursor: pointer;
     border:3px solid var(--bright-yellow);
     border-radius: 50px;
@@ -33,7 +35,7 @@ div{
     justify-content: space-between;
     align-items: center;
 }
-div span{
+#toggler span{
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     -khtml-user-select: none;
@@ -44,8 +46,9 @@ div span{
     color:var(--bright-yellow);
     transition:color 0.1s;
 }
-div span.active{
-    color:var(--purple)
+#toggler span.active{
+    color:var(--purple);
+    font-weight:bold;
 }
 #slider{
     position:relative;
@@ -53,6 +56,8 @@ div span.active{
     top:-72px;
     height:66px;
     z-index: -1;
+    border-radius: 50px;
+    border:3px solid var(--bright-yellow);
 }
 #slider.passenger{
     left:161px;

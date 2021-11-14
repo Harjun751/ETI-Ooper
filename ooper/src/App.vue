@@ -51,7 +51,6 @@ html{
   background: var(--purple);
 }
 
-
 .navigation {
   overflow: hidden;
   text-decoration: none;
@@ -81,5 +80,19 @@ html{
   transform: translate3d(0, 0, 0);
 }
 
-
+/* input styles */
+input{
+  all:unset;
+  display:block;
+  background: none;
+  color:var(--bright-yellow);
+  text-align: left;
+  margin-bottom:30px;
+}
+input:invalid{
+  border-bottom: 3px solid var(--dark-yellow);
+}
+input:valid{
+  border-bottom: 3px solid var(--bright-yellow);
+}
 </style>
