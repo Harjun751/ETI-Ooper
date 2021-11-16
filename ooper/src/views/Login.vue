@@ -1,12 +1,13 @@
 <template>
     <div id="images">
+        <Driver :isPassenger="isPassenger"/>
         <Passenger :isPassenger="isPassenger"/>
     </div>
     <div id="login">
         <Toggle @updatePassenger="updatePassenger"/>
-        <input type="email" placeholder="e-mail address" required/>
-        <input type="password" placeholder="password" required/>
-        <Button text="login"/>
+        <input v-model="email" type="email" placeholder="e-mail address" required/>
+        <input v-model="password" type="password" placeholder="password" required/>
+        <Button text="login" @click="login"/>
     </div>
 </template>
 
@@ -14,19 +15,29 @@
 import Toggle from "../components/toggle.vue"
 import Button from "../components/button.vue"
 import Passenger from "../components/passenger.vue"
+import Driver from "../components/driver.vue"
+import { store } from "../state"
 export default {
-    components:{Toggle,Button,Passenger},
+    components:{Toggle,Button,Passenger,Driver},
     data(){
         return{
-            isPassenger:true
+            isPassenger:true,
+            email:null,
+            password:null
         }
     },
     methods:{
         updatePassenger(passenger){
             this.isPassenger = passenger
+        },
+        login(){
+            store.setLoggedIn(true)
+            store.setIsPassenger(this.isPassenger)
+            if (this.isPassenger){
+                this.$router.push("new-trip")
+            }
         }
-    }
-
+    },
 }
 </script>
 

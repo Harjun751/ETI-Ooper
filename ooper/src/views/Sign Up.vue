@@ -30,7 +30,7 @@ export default {
         updatePassenger(passenger){
             this.isPassenger = passenger
         }
-    }
+    },
 }
 </script>
 

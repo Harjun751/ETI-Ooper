@@ -103,7 +103,6 @@
 </template>
 
 <script>
-// import { ref,watch } from 'vue'
 export default {
     props:{
         isPassenger:Boolean
@@ -133,11 +132,12 @@ export default {
 
 .change-color-in-svg-1,
 .change-color-in-svg-2,
-.change-color-in-svg-3{
+.change-color-in-svg-3,
+.change-color-in-svg-4{
     transition: fill .3s;
 }
 svg{
-    height:400px;
+    height:300px;
     transform: scale(-1, 1);
 }
 </style>

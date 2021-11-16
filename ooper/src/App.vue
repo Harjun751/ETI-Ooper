@@ -1,12 +1,37 @@
 <template>
-  <div id="nav">
+  <div v-if="state.isPassenger==null" id="nav">
     <span>ooper</span>
     <router-link class="navigation" to="/">home</router-link>
     <router-link class="navigation" to="/login">login</router-link>
     <router-link class="navigation" to="/sign-up">sign up</router-link>
   </div>
+  <div v-else-if="state.isPassenger" id="nav">
+    <span>ooper</span>
+    <router-link class="navigation" to="/new-trip">new trip</router-link>
+    <router-link class="navigation" to="/view-trips">view trips</router-link>
+    <router-link class="navigation" to="/update-account">update account</router-link>
+    <router-link class="navigation" to="/sign-out">sign out</router-link>
+  </div>
+  <div v-else-if="state.isPassenger==false" id="nav">
+    <span>ooper</span>
+    <router-link class="navigation" to="/trip-management">trip management</router-link>
+    <router-link class="navigation" to="/sign-out">sign out</router-link>
+  </div>
   <router-view />
 </template>
+
+<script>
+import { store } from "./state"
+
+export default {
+    data(){
+        return{
+            state:store.state,
+        }
+    },    
+}
+</script>
+
 
 <style>
 :root{
