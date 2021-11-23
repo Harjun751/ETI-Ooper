@@ -9,12 +9,10 @@ export default {
     props:["text"],
     data(){
         return{
-            
+            clientX:0,
+            clientY:0
         }
     },
-    methods:{
-
-    }
 }
 </script>
 
@@ -28,5 +26,9 @@ button{
     background:var(--bright-yellow);
     color:var(--purple);
     font-weight: bold;
+    transition: .1s background linear;
+}
+button:hover{
+  background:var(--dark-yellow);
 }
 </style>

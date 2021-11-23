@@ -35,6 +35,18 @@ export default {
                 return "https://www.google.com/maps/embed/v1/view?key=" + process.env.VUE_APP_GMAPS_KEY +"&maptype=roadmap&center=1.38229,103.79714&zoom=10"
             }
         }
+    },
+    watch:{
+        destination(){
+            if (this.origin != "" && this.destination != ""){
+                this.price = "$" + (Math.floor(Math.random()*100)).toString()
+            }
+        },
+        origin(){
+            if (this.origin != "" && this.destination != ""){
+                this.price = "$" + (Math.floor(Math.random()*100)).toString()
+            }
+        },
     }
 }
 </script>

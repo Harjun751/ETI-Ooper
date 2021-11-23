@@ -4,6 +4,9 @@ import SignUp from "../views/Sign Up.vue";
 import Login from "../views/Login.vue";
 import NewTrip from "../views/Passenger/New Trip.vue";
 
+const ViewTrips = () => import("../views/Passenger/View Trips.vue")
+const UpdateAccount = () => import("../views/Update Account.vue")
+
 const routes = [
   {
     path: "/",
@@ -24,6 +27,16 @@ const routes = [
     path: "/new-trip",
     name: "new-trip",
     component: NewTrip,
+  },
+  {
+    path:"/view-trips",
+    name:"view-trips",
+    component:ViewTrips
+  },
+  {
+    path:"/update-account",
+    name:"update-account",
+    component:UpdateAccount
   },
 ];
 
