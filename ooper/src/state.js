@@ -2,10 +2,8 @@ import { reactive } from "@vue/reactivity"
 // eslint-disable-next-line no-unused-vars
 const store = {
     state: reactive({
-      loggedIn:true,
-      isPassenger:true
-      // loggedIn:false,
-      // isPassenger:null
+      loggedIn:false,
+      isPassenger:null
     }),
   
     setLoggedIn(newValue) {

@@ -2,18 +2,21 @@
   <h1>new to ooper?</h1>
     <div id="toggle"><Toggle @updatePassenger="updatePassenger"/></div>
   <div class="row">
-      <input type="text" placeholder="first name" required/>
-      <input type="text" placeholder="last name" required/>
+      <input type="text" v-model="firstName" placeholder="first name" required/>
+      <input type="text" v-model="lastName" placeholder="last name" required/>
   </div>
   <div class="row">
-      <input type="text" placeholder="mobile number" required/>
-      <input type="email" placeholder="e-mail address" required/>
+      <input type="text" v-model="mobileNumber" placeholder="mobile number" required/>
+      <input type="email" v-model="email" placeholder="e-mail address" required/>
   </div>
   <div class="row" id="driver-only" :class="{hide:isPassenger,show:isPassenger==false}">
       <input type="text" placeholder="identification number" required :disabled="isPassenger"/>
       <input type="email" placeholder="car license number" required :disabled="isPassenger"/>
   </div>
-  <Button text="sign up"/>
+  <div class="row">
+      <input type="password" v-model="password" placeholder="password" required/>
+  </div>
+  <Button text="sign up" @click="submitSignUp"/>
 </template>
 
 <script>
@@ -23,12 +26,27 @@ export default {
     components:{Toggle,Button},
     data(){
         return{
-            isPassenger:true
+            isPassenger:true,
+            firstName:"",
+            lastName:"",
+            mobileNumber:null,
+            email:"",
+            password:""
         }
     },
     methods:{
         updatePassenger(passenger){
             this.isPassenger = passenger
+        },
+        async submitSignUp(){
+            var data = {"FirstName":this.firstName,"LastName":this.lastName,"MobileNumber":Number(this.mobileNumber),"Email":this.email,"Password":this.password}
+            await fetch("http://localhost:5000/api/v1/passengers",{
+                body: JSON.stringify(data),
+                method:"POST",
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            })
         }
     },
 }
