@@ -30,10 +30,26 @@ export default {
         updatePassenger(passenger){
             this.isPassenger = passenger
         },
-        login(){
-            store.setLoggedIn(true)
-            store.setIsPassenger(this.isPassenger)
+        async login(){
             if (this.isPassenger){
+                var data = {"email":this.email,"password":this.password}
+                await fetch("http://localhost:5000/api/v1/login",{
+                    body: JSON.stringify(data),
+                    method:"POST",
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                })
+                .then(async (res)=> await res.json())
+                .then((data)=>{
+                    store.setJWTAccessToken(data.token)
+                    if (data.isPassenger == "true"){
+                        store.setIsPassenger(true)
+                    }
+                    else if (data.isPassenger == "false"){
+                        store.setIsPassenger(false)
+                    }
+                })
                 this.$router.push("new-trip")
             }
         }

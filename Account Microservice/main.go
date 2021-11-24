@@ -12,6 +12,7 @@ import (
 	"net/http"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/golang-jwt/jwt"
 	"github.com/gorilla/mux"
 )
 
@@ -25,6 +26,40 @@ type passenger struct {
 }
 
 var database *sql.DB
+var secret = []byte("it took the night to believe")
+
+func genJWT(id int, email string, isPassenger bool) string {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"id":          id,
+		"email":       email,
+		"isPassenger": isPassenger,
+	})
+
+	tokenString, err := token.SignedString(secret)
+	if err != nil {
+		panic(err)
+	}
+	return tokenString
+}
+
+func authentication(r *http.Request) (int, bool) {
+	headerToken := r.Header.Get("Authorization")
+	// Decode the jwt and ensure it's readable
+	token, err := jwt.Parse(headerToken[7:], func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+
+		return secret, nil
+	})
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		id := int(claims["id"].(float64))
+		return id, true
+	} else {
+		fmt.Println(err)
+		return 0, false
+	}
+}
 
 func saltNHash(password string) (string, string) {
 	// create a salt of 16 bytes
@@ -51,7 +86,7 @@ func GenerateRandomBytes(n int) ([]byte, error) {
 
 func passengerHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept")
+	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization")
 	params := mux.Vars(r)
 
 	if r.Method == http.MethodOptions {
@@ -104,11 +139,19 @@ func passengerHandler(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				panic(err.Error())
 			}
+			w.Write([]byte("200 - Account created"))
 		}
 
 		if r.Method == "PATCH" {
 			var newPassenger passenger
 			reqBody, err := ioutil.ReadAll(r.Body)
+			// authenticate user
+			id, authenticated := authentication(r)
+			if !authenticated {
+				w.WriteHeader(http.StatusUnprocessableEntity)
+				w.Write([]byte("401 - Access token incorrect"))
+				return
+			}
 
 			if err != nil {
 				w.WriteHeader(http.StatusUnprocessableEntity)
@@ -125,7 +168,8 @@ func passengerHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			query := fmt.Sprintf("UPDATE passenger SET first_name='%s',last_name='%s',mobile_number=%d,email='%s' WHERE ID=%d;", newPassenger.FirstName, newPassenger.LastName, newPassenger.MobileNumber, newPassenger.Email, newPassenger.ID)
+			query := fmt.Sprintf("UPDATE passenger SET first_name='%s',last_name='%s',mobile_number=%d,email='%s' WHERE ID=%d;", newPassenger.FirstName, newPassenger.LastName, newPassenger.MobileNumber, newPassenger.Email, id)
+			fmt.Println(query)
 			_, err = database.Query(query)
 			if err != nil {
 				panic(err.Error())
@@ -135,6 +179,8 @@ func passengerHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept")
 	if r.Method == "POST" {
 		reqBody, err := ioutil.ReadAll(r.Body)
 
@@ -150,11 +196,13 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			panic(err.Error())
 		}
 
-		query := fmt.Sprintf("select password,salt from passenger where email='%s'", authenticationInfo["email"])
+		query := fmt.Sprintf("select id,email,password,salt from passenger where email='%s'", authenticationInfo["email"])
 		results := database.QueryRow(query)
+		var id int
+		var email string
 		var salt string
 		var passHash string
-		err = results.Scan(&passHash, &salt)
+		err = results.Scan(&id, &email, &passHash, &salt)
 		if err != nil {
 			panic(err.Error())
 		}
@@ -169,11 +217,23 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		saltedPassword := append([]byte(password), decodedSalt...)
 
 		hashedInput := sha256.Sum256(saltedPassword)
-		if fmt.Sprintf("%x", hashedInput) == passHash {
-			fmt.Println("Authenticated lol")
-		} else {
-			fmt.Println("Wrong")
+		if fmt.Sprintf("%x", hashedInput) != passHash {
+			// return HTTP error here
+			return
 		}
+		// TODO: Change Code so that it allows both drivers and passengers to log in
+		// Or create new login endpoint for driver
+		token := genJWT(id, email, true)
+		w.Header().Set("Content-Type", "application/json")
+		resp := make(map[string]string)
+		resp["token"] = token
+		resp["isPassenger"] = "true"
+		// Encode map to json string
+		jsonResp, err := json.Marshal(resp)
+		if err != nil {
+			panic(err)
+		}
+		w.Write(jsonResp)
 	}
 }
 

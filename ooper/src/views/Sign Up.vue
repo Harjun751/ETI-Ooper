@@ -46,6 +46,11 @@ export default {
                 headers: {
                     'Content-Type': 'application/json',
                 },
+            }).then((resp)=>{
+                if (resp.status==200) {
+                    // TODO: replace with nicer alert
+                    alert("Created Account!")
+                }
             })
         }
     },
