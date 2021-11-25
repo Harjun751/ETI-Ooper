@@ -9,8 +9,8 @@
       <input type="email" v-model="email" placeholder="e-mail address" required/>
   </div>
   <div class="row" v-if="isPassenger==false">
-      <input type="text" placeholder="identification number" required/>
-      <input type="email" placeholder="car license number" required/>
+      <input type="text" v-model="ic" placeholder="identification number" required/>
+      <input type="email" v-model="license" placeholder="car license number" required/>
   </div>
   <Button text="update" @click="updateUser" />
 </template>
@@ -26,13 +26,24 @@ export default {
             firstName:"",
             lastName:"",
             mobileNumber:null,
+            ic:"",
+            license:"",
             email:""
         }
     },
     methods:{
         async updateUser(){
             var data = {"FirstName":this.firstName,"LastName":this.lastName,"MobileNumber":Number(this.mobileNumber),"Email":this.email}
-            await fetch("http://localhost:5000/api/v1/passengers",{
+            var url = ""
+            if (this.isPassenger){
+                url = "http://localhost:5000/api/v1/passengers"
+            }
+            else if (this.isPassenger == false){
+                url = "http://localhost:5001/api/v1/drivers"
+                data["ICNumber"] = this.ic
+                data["LicenseNumber"] = this.license
+            }
+            await fetch(url,{
                 body: JSON.stringify(data),
                 method:"PATCH",
                 headers: {

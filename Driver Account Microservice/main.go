@@ -15,19 +15,21 @@ import (
 	"github.com/gorilla/mux"
 )
 
-type passenger struct {
+type driver struct {
 	ID           int
 	FirstName    string
 	LastName     string
 	MobileNumber int
 	Email        string
 	Password     string
+	ICNumber 	 string
+	LicenseNumber string
 	Salt 		 string
 }
 
 var database *sql.DB
 
-func authentication(r *http.Request) (int, bool) {
+func authentication(r *http.Request) (int,bool, bool) {
 	var secret = []byte("it took the night to believe")
 	headerToken := r.Header.Get("Authorization")
 	// Decode the jwt and ensure it's readable
@@ -40,10 +42,11 @@ func authentication(r *http.Request) (int, bool) {
 	})
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		id := int(claims["id"].(float64))
-		return id, true
+		isPassenger := claims["isPassenger"].(bool)
+		return id, isPassenger, true
 	} else {
 		fmt.Println(err)
-		return 0, false
+		return 0, true, false
 	}
 }
 
@@ -69,7 +72,7 @@ func GenerateRandomBytes(n int) ([]byte, error) {
 	}
 	return b, nil
 }
-func passengersHandler(w http.ResponseWriter, r *http.Request) {
+func driversHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization")
 
@@ -83,29 +86,28 @@ func passengersHandler(w http.ResponseWriter, r *http.Request) {
 		email := kv["email"]
 		var query string
 		if id!=nil {
-			query = fmt.Sprintf("select * from passenger where ID=%s", id[0])
+			query = fmt.Sprintf("select * from driver where ID=%s", id[0])
 		} else if email != nil{
-			query = fmt.Sprintf("select * from passenger where email='%s'", email[0])
+			query = fmt.Sprintf("select * from driver where email='%s'", email[0])
 		}
-		fmt.Println(query)
 		results, err := database.Query(query)
 		if err != nil {
 			panic(err.Error())
 		}
 		results.Next()
-		var passenger passenger
-		err = results.Scan(&passenger.ID, &passenger.FirstName, &passenger.LastName, &passenger.MobileNumber, &passenger.Email, &passenger.Password, &passenger.Salt)
+		var driver driver
+		err = results.Scan(&driver.ID, &driver.FirstName, &driver.LastName, &driver.MobileNumber, &driver.Email, &driver.ICNumber, &driver.LicenseNumber,&driver.Password, &driver.Salt)
 
 		if err != nil {
 			panic(err.Error())
 		}
 
-		json.NewEncoder(w).Encode(passenger)
+		json.NewEncoder(w).Encode(driver)
 	}
 
 	if r.Header.Get("Content-Type") == "application/json" {
 		if r.Method == "POST" {
-			var newPassenger passenger
+			var newDriver driver
 			reqBody, err := ioutil.ReadAll(r.Body)
 
 			if err != nil {
@@ -114,9 +116,9 @@ func passengersHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			json.Unmarshal(reqBody, &newPassenger)
+			json.Unmarshal(reqBody, &newDriver)
 
-			if newPassenger.Email == "" || newPassenger.FirstName == "" || newPassenger.LastName == "" || newPassenger.Password == "" {
+			if newDriver.Email == "" || newDriver.FirstName == "" || newDriver.LastName == "" || newDriver.Password == ""|| newDriver.ICNumber == "" || newDriver.LicenseNumber == "" {
 				// Return error for incomplete passenger details
 				w.WriteHeader(http.StatusUnprocessableEntity)
 				w.Write([]byte("422 - Please supply course information in JSON format"))
@@ -124,9 +126,9 @@ func passengersHandler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// get salt and hash of password
-			salt, hash := saltNHash(newPassenger.Password)
+			salt, hash := saltNHash(newDriver.Password)
 
-			query := fmt.Sprintf("INSERT INTO passenger (first_name,last_name,mobile_number,email,password,salt) VALUES ('%s', '%s', %d, '%s', '%s', '%s')", newPassenger.FirstName, newPassenger.LastName, newPassenger.MobileNumber, newPassenger.Email, hash, salt)
+			query := fmt.Sprintf("INSERT INTO driver (first_name,last_name,mobile_number,email,ic_number,license_number,password,salt) VALUES ('%s', '%s', %d, '%s', '%s', '%s','%s','%s')", newDriver.FirstName, newDriver.LastName, newDriver.MobileNumber, newDriver.Email, newDriver.ICNumber,newDriver.LicenseNumber,hash, salt)
 			_, err = database.Query(query)
 			if err != nil {
 				panic(err.Error())
@@ -135,13 +137,13 @@ func passengersHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if r.Method == "PATCH" {
-			var newPassenger passenger
+			var newDriver driver
 			reqBody, err := ioutil.ReadAll(r.Body)
 			// authenticate user
-			id, authenticated := authentication(r)
-			if !authenticated {
+			id, isPassenger, authenticated := authentication(r)
+			if !authenticated || isPassenger {
 				w.WriteHeader(http.StatusUnprocessableEntity)
-				w.Write([]byte("401 - Access token incorrect"))
+				w.Write([]byte("401 - Access token incorrect/unauthorized"))
 				return
 			}
 
@@ -151,17 +153,16 @@ func passengersHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			json.Unmarshal(reqBody, &newPassenger)
+			json.Unmarshal(reqBody, &newDriver)
 
-			if newPassenger.Email == "" || newPassenger.FirstName == "" || newPassenger.LastName == "" {
+			if newDriver.Email == "" || newDriver.FirstName == "" || newDriver.LastName == "" {
 				// Return error for incomplete passenger details
 				w.WriteHeader(http.StatusUnprocessableEntity)
 				w.Write([]byte("422 - Please supply course information in JSON format"))
 				return
 			}
 
-			query := fmt.Sprintf("UPDATE passenger SET first_name='%s',last_name='%s',mobile_number=%d,email='%s' WHERE ID=%d;", newPassenger.FirstName, newPassenger.LastName, newPassenger.MobileNumber, newPassenger.Email, id)
-			fmt.Println(query)
+			query := fmt.Sprintf("UPDATE driver SET first_name='%s',last_name='%s',mobile_number=%d,email='%s',ic_number='%s',license_nmber='%s' WHERE ID=%d;", newDriver.FirstName, newDriver.LastName, newDriver.MobileNumber, newDriver.Email,newDriver.ICNumber,newDriver.LicenseNumber, id)
 			_, err = database.Query(query)
 			if err != nil {
 				panic(err.Error())
@@ -184,8 +185,8 @@ func main() {
 
 	router := mux.NewRouter()
 
-	router.HandleFunc("/api/v1/passengers", passengersHandler).Methods(http.MethodPatch, http.MethodPost, http.MethodOptions, http.MethodGet)
+	router.HandleFunc("/api/v1/drivers", driversHandler).Methods(http.MethodPatch, http.MethodPost, http.MethodOptions, http.MethodGet)
 	router.Use(mux.CORSMethodMiddleware(router))
-	fmt.Println("Listening at port 5000")
-	log.Fatal(http.ListenAndServe(":5000", router))
+	fmt.Println("Listening at port 5001")
+	log.Fatal(http.ListenAndServe(":5001", router))
 }

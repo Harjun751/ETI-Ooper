@@ -10,8 +10,8 @@
       <input type="email" v-model="email" placeholder="e-mail address" required/>
   </div>
   <div class="row" id="driver-only" :class="{hide:isPassenger,show:isPassenger==false}">
-      <input type="text" placeholder="identification number" required :disabled="isPassenger"/>
-      <input type="email" placeholder="car license number" required :disabled="isPassenger"/>
+      <input type="text" v-model="ic" placeholder="identification number" required :disabled="isPassenger"/>
+      <input type="email" v-model="license" placeholder="car license number" required :disabled="isPassenger"/>
   </div>
   <div class="row">
       <input type="password" v-model="password" placeholder="password" required/>
@@ -31,6 +31,8 @@ export default {
             lastName:"",
             mobileNumber:null,
             email:"",
+            ic:"",
+            license:"",
             password:""
         }
     },
@@ -40,7 +42,16 @@ export default {
         },
         async submitSignUp(){
             var data = {"FirstName":this.firstName,"LastName":this.lastName,"MobileNumber":Number(this.mobileNumber),"Email":this.email,"Password":this.password}
-            await fetch("http://localhost:5000/api/v1/passengers",{
+            var url = ""
+            if (this.isPassenger){
+                url = "http://localhost:5000/api/v1/passengers"
+            }
+            else{
+                url = "http://localhost:5001/api/v1/drivers"
+                data["ICNumber"] = this.ic
+                data["LicenseNumber"] = this.license
+            }
+            await fetch(url,{
                 body: JSON.stringify(data),
                 method:"POST",
                 headers: {

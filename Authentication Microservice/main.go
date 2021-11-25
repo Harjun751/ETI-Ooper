@@ -46,24 +46,27 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			panic(err.Error())
 		}
+		isPassenger := authenticationInfo["isPassenger"].(bool)
+		email := authenticationInfo["email"].(string)
+		var url string
+		if isPassenger {
+			url = "http://localhost:5000/api/v1/passengers?email="+email
+		} else if isPassenger==false {
+			url = "http://localhost:5001/api/v1/drivers?email="+email
+		}
 
 		var id int
-		email := authenticationInfo["email"].(string)
 		var salt string
 		var passHash string
-		if resp, err := http.Get("localhost:5000/api/v1/passengers?email="+email); err == nil {
+		resp, err := http.Get(url);
+		if err == nil {
 			defer resp.Body.Close()
 			if body, err := ioutil.ReadAll(resp.Body); err == nil {
 				var result map[string]interface{}
 				json.Unmarshal(body, &result)
-				if result["success"]==true{
-					id = int(result["id"].(float64))
-					salt = result["salt"].(string)
-					passHash = result["passHash"].(string)					
-				} else {
-					// HTTP error here
-					return
-				}
+				id = int(result["ID"].(float64))
+				salt = result["Salt"].(string)
+				passHash = result["Password"].(string)
 			}
 		}
 		
@@ -82,15 +85,11 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			// return HTTP error here
 			return
 		}
-		// TODO: Change Code so that it allows both drivers and passengers to log in
-		// Or create new login endpoint for driver
 		token := genJWT(id, email, true)
 		w.Header().Set("Content-Type", "application/json")
-		resp := make(map[string]string)
-		resp["token"] = token
-		resp["isPassenger"] = "true"
+		response := map[string]interface{}{"token":token,"isPassenger":isPassenger}
 		// Encode map to json string
-		jsonResp, err := json.Marshal(resp)
+		jsonResp, err := json.Marshal(response)
 		if err != nil {
 			panic(err)
 		}
@@ -101,6 +100,6 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 func main(){
 	router := mux.NewRouter()
 	router.HandleFunc("/api/v1/login", loginHandler)
-	fmt.Println("Listening at port 5000")
-	log.Fatal(http.ListenAndServe(":5000", router))
+	fmt.Println("Listening at port 5003")
+	log.Fatal(http.ListenAndServe(":5003", router))
 }
