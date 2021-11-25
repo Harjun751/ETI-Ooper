@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/sha256"
 	"database/sql"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -23,26 +22,13 @@ type passenger struct {
 	MobileNumber int
 	Email        string
 	Password     string
+	Salt 		 string
 }
 
 var database *sql.DB
-var secret = []byte("it took the night to believe")
-
-func genJWT(id int, email string, isPassenger bool) string {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"id":          id,
-		"email":       email,
-		"isPassenger": isPassenger,
-	})
-
-	tokenString, err := token.SignedString(secret)
-	if err != nil {
-		panic(err)
-	}
-	return tokenString
-}
 
 func authentication(r *http.Request) (int, bool) {
+	var secret = []byte("it took the night to believe")
 	headerToken := r.Header.Get("Authorization")
 	// Decode the jwt and ensure it's readable
 	token, err := jwt.Parse(headerToken[7:], func(token *jwt.Token) (interface{}, error) {
@@ -83,26 +69,32 @@ func GenerateRandomBytes(n int) ([]byte, error) {
 	}
 	return b, nil
 }
-
-func passengerHandler(w http.ResponseWriter, r *http.Request) {
+func passengersHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization")
-	params := mux.Vars(r)
 
 	if r.Method == http.MethodOptions {
 		return
 	}
 
 	if r.Method == "GET" {
-		id := params["ID"]
-		query := fmt.Sprintf("select * from passenger where ID=%s", id)
+		kv := r.URL.Query()
+		id := kv["id"]
+		email := kv["email"]
+		var query string
+		if id!=nil {
+			query = fmt.Sprintf("select * from passenger where ID=%s", id[0])
+		} else if email != nil{
+			query = fmt.Sprintf("select * from passenger where email='%s'", email[0])
+		}
+		fmt.Println(query)
 		results, err := database.Query(query)
 		if err != nil {
 			panic(err.Error())
 		}
 		results.Next()
 		var passenger passenger
-		err = results.Scan(&passenger.ID, &passenger.FirstName, &passenger.LastName, &passenger.MobileNumber, &passenger.Email)
+		err = results.Scan(&passenger.ID, &passenger.FirstName, &passenger.LastName, &passenger.MobileNumber, &passenger.Email, &passenger.Password, &passenger.Salt)
 
 		if err != nil {
 			panic(err.Error())
@@ -178,65 +170,6 @@ func passengerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func loginHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept")
-	if r.Method == "POST" {
-		reqBody, err := ioutil.ReadAll(r.Body)
-
-		if err != nil {
-			w.WriteHeader(http.StatusUnprocessableEntity)
-			w.Write([]byte("422 - Please supply course information in JSON format"))
-			return
-		}
-
-		var authenticationInfo map[string]interface{}
-		err = json.Unmarshal(reqBody, &authenticationInfo)
-		if err != nil {
-			panic(err.Error())
-		}
-
-		query := fmt.Sprintf("select id,email,password,salt from passenger where email='%s'", authenticationInfo["email"])
-		results := database.QueryRow(query)
-		var id int
-		var email string
-		var salt string
-		var passHash string
-		err = results.Scan(&id, &email, &passHash, &salt)
-		if err != nil {
-			panic(err.Error())
-		}
-
-		// Convert salt from hex string to byte array
-		decodedSalt, err := hex.DecodeString(salt)
-		if err != nil {
-			panic(err)
-		}
-		// Type assert password into string
-		password := authenticationInfo["password"].(string)
-		saltedPassword := append([]byte(password), decodedSalt...)
-
-		hashedInput := sha256.Sum256(saltedPassword)
-		if fmt.Sprintf("%x", hashedInput) != passHash {
-			// return HTTP error here
-			return
-		}
-		// TODO: Change Code so that it allows both drivers and passengers to log in
-		// Or create new login endpoint for driver
-		token := genJWT(id, email, true)
-		w.Header().Set("Content-Type", "application/json")
-		resp := make(map[string]string)
-		resp["token"] = token
-		resp["isPassenger"] = "true"
-		// Encode map to json string
-		jsonResp, err := json.Marshal(resp)
-		if err != nil {
-			panic(err)
-		}
-		w.Write(jsonResp)
-	}
-}
-
 func main() {
 	db, err := sql.Open("mysql", "user:password@tcp(127.0.0.1:3306)/ooper")
 
@@ -251,9 +184,7 @@ func main() {
 
 	router := mux.NewRouter()
 
-	router.HandleFunc("/api/v1/passengers", passengerHandler).Methods(http.MethodPatch, http.MethodPost, http.MethodOptions)
-	router.HandleFunc("/api/v1/passengers/{ID}", passengerHandler)
-	router.HandleFunc("/api/v1/login", loginHandler)
+	router.HandleFunc("/api/v1/passengers", passengersHandler).Methods(http.MethodPatch, http.MethodPost, http.MethodOptions, http.MethodGet)
 	router.Use(mux.CORSMethodMiddleware(router))
 	fmt.Println("Listening at port 5000")
 	log.Fatal(http.ListenAndServe(":5000", router))
