@@ -12,6 +12,7 @@ import (
 	"github.com/golang-jwt/jwt"
 	"github.com/gorilla/mux"
 )
+
 var secret = []byte("it took the night to believe")
 
 func genJWT(id int, email string, isPassenger bool) string {
@@ -50,15 +51,15 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		email := authenticationInfo["email"].(string)
 		var url string
 		if isPassenger {
-			url = "http://localhost:5000/api/v1/passengers?email="+email
-		} else if isPassenger==false {
-			url = "http://localhost:5001/api/v1/drivers?email="+email
+			url = "http://localhost:5000/api/v1/passengers?email=" + email
+		} else if !isPassenger {
+			url = "http://localhost:5001/api/v1/drivers?email=" + email
 		}
 
 		var id int
 		var salt string
 		var passHash string
-		resp, err := http.Get(url);
+		resp, err := http.Get(url)
 		if err == nil {
 			defer resp.Body.Close()
 			if body, err := ioutil.ReadAll(resp.Body); err == nil {
@@ -69,7 +70,6 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 				passHash = result["Password"].(string)
 			}
 		}
-		
 
 		// Convert salt from hex string to byte array
 		decodedSalt, err := hex.DecodeString(salt)
@@ -87,7 +87,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		token := genJWT(id, email, true)
 		w.Header().Set("Content-Type", "application/json")
-		response := map[string]interface{}{"token":token,"isPassenger":isPassenger}
+		response := map[string]interface{}{"token": token, "isPassenger": isPassenger}
 		// Encode map to json string
 		jsonResp, err := json.Marshal(response)
 		if err != nil {
@@ -97,9 +97,10 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func main(){
+func main() {
 	router := mux.NewRouter()
 	router.HandleFunc("/api/v1/login", loginHandler)
+	fmt.Println("Authentication Microservice")
 	fmt.Println("Listening at port 5003")
 	log.Fatal(http.ListenAndServe(":5003", router))
 }

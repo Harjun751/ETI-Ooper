@@ -3,26 +3,35 @@
         <div class="row" v-for="item in data" :key="item.id">
             <span>></span>&nbsp;
             <span>{{item.date}}</span>
-            <span class="origin">{{item.origin}}</span>
+            <span class="origin">{{item.PickUp}}</span>
             &nbsp;<span>-</span>&nbsp;
-            <span>{{item.destination}}</span>
+            <span>{{item.DropOff}}</span>
             <span class="time">{{item.time}}</span>
         </div>
     </section>
 </template>
 
 <script>
+import { store } from "../../state"
 export default {
 data(){
     return{
-        data:[
-            {
-                "date":"11 Nov, 2021","origin":"Bukit Batok",
-                "destination":"Shuque Secondary","time":"11:38AM",
-                "price":"42","id":"asdfasdb12"
-            }
-            ]
+        data:[]
     }
+},
+async mounted(){
+    await fetch("http://localhost:5004/api/v1/trips",{
+        method:"GET",
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': "Bearer " +  store.state.jwtAccessToken
+        },
+    })
+    .then(async (res)=> await res.json())
+    .then((data)=>{
+        console.log(data)
+        this.data = data
+    })
 }
 }
 </script>

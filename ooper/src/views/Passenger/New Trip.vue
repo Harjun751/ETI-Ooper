@@ -11,12 +11,13 @@
     <input v-model="origin" type="text" placeholder="start point"/>
     <input v-model="destination" type="text" placeholder="end point"/>
     <p>fee:<span id="value">{{ price }}</span></p>
-    <Button text="book"/>
+    <Button text="book" @click="requestTrip"/>
   </div>
 </template>
 
 <script>
 import Button from "../../components/button.vue"
+import { store } from "../../state"
 export default {
     components:{Button},
     data(){
@@ -47,6 +48,24 @@ export default {
                 this.price = "$" + (Math.floor(Math.random()*100)).toString()
             }
         },
+    },
+    methods:{
+        async requestTrip(){
+            var data = {"PickUp":this.origin,"DropOff":this.destination}
+            await fetch("http://localhost:5004/api/v1/trips",{
+                body: JSON.stringify(data),
+                method:"POST",
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': "Bearer " +  store.state.jwtAccessToken
+                },
+            })
+            .then(async (res)=> await res.json())
+            .then((data)=>{
+                //TODO: Replace with a nicer alert
+                alert("Your driver is " + data.FirstName + " " + data.LastName + "\nLicense Number: " + data.LicenseNumber)
+            })
+        }
     }
 }
 </script>

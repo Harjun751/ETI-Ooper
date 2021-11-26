@@ -41,11 +41,8 @@ export default {
             })
             .then(async (res)=> await res.json())
             .then((data)=>{
-                console.log(data.token)
-                console.log(data.isPassenger)
                 store.setJWTAccessToken(data.token)
                 store.setIsPassenger(data.isPassenger)
-                console.log(store.state.isPassenger)
             })
             if (this.isPassenger){
                 this.$router.push("new-trip")

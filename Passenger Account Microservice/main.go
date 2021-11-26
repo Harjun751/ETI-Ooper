@@ -22,12 +22,12 @@ type passenger struct {
 	MobileNumber int
 	Email        string
 	Password     string
-	Salt 		 string
+	Salt         string
 }
 
 var database *sql.DB
 
-func authentication(r *http.Request) (int,bool, bool) {
+func authentication(r *http.Request) (int, bool, bool) {
 	var secret = []byte("it took the night to believe")
 	headerToken := r.Header.Get("Authorization")
 	// Decode the jwt and ensure it's readable
@@ -83,9 +83,9 @@ func passengersHandler(w http.ResponseWriter, r *http.Request) {
 		id := kv["id"]
 		email := kv["email"]
 		var query string
-		if id!=nil {
+		if id != nil {
 			query = fmt.Sprintf("select * from passenger where ID=%s", id[0])
-		} else if email != nil{
+		} else if email != nil {
 			query = fmt.Sprintf("select * from passenger where email='%s'", email[0])
 		}
 		results, err := database.Query(query)
@@ -185,6 +185,7 @@ func main() {
 
 	router.HandleFunc("/api/v1/passengers", passengersHandler).Methods(http.MethodPatch, http.MethodPost, http.MethodOptions, http.MethodGet)
 	router.Use(mux.CORSMethodMiddleware(router))
+	fmt.Println("Passenger Microservice")
 	fmt.Println("Listening at port 5000")
 	log.Fatal(http.ListenAndServe(":5000", router))
 }

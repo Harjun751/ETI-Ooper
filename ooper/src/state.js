@@ -3,9 +3,8 @@ import { reactive } from "@vue/reactivity"
 const store = {
     state: reactive({
       jwtAccessToken:null,
-      isPassenger:null
+      isPassenger:null,
     }),
-  
     setJWTAccessToken(newValue) {
         this.state.jwtAccessToken = newValue
     },
