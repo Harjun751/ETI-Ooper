@@ -21,6 +21,7 @@ type trip struct {
 	DropOff     string
 	PassengerID int
 	DriverID    int
+	Requested   mysql.NullTime
 	Start       mysql.NullTime
 	End         mysql.NullTime
 }
@@ -48,10 +49,141 @@ func authentication(r *http.Request) (int, bool, bool) {
 	}
 }
 
-// Request - POST
-// View - GET
-// Start - PATCH?
-// End - PATCH?
+func startTripHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization")
+
+	if r.Method == http.MethodOptions {
+		return
+	}
+
+	if r.Method == "POST" {
+		// authenticate user
+		id, isPassenger, authenticated := authentication(r)
+		// Only drivers can update
+		if !authenticated || isPassenger {
+			// Return HTTP error here
+			return
+		}
+
+		params := mux.Vars(r)
+		tripID := params["ID"]
+		var driver_id int
+
+		// GET trip
+		query := fmt.Sprintf("select driver_id from trip where id=" + tripID)
+		results, err := database.Query(query)
+		if err != nil {
+			panic(err.Error())
+		}
+		results.Next()
+		err = results.Scan(&driver_id)
+		if err != nil {
+			panic(err)
+		}
+		if driver_id != id {
+			// Return unauthorized status code
+			return
+		}
+		_, err = database.Query("UPDATE trip SET start=NOW() where id=" + tripID)
+		if err != nil {
+			panic(err.Error())
+		}
+		w.Write([]byte("200 - Trip updated"))
+	}
+
+}
+func endTripHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization")
+
+	if r.Method == http.MethodOptions {
+		return
+	}
+
+	if r.Method == "POST" {
+		// authenticate user
+		id, isPassenger, authenticated := authentication(r)
+		// Only drivers can update
+		if !authenticated || isPassenger {
+			// Return HTTP error here
+			return
+		}
+
+		params := mux.Vars(r)
+		tripID := params["ID"]
+		var driver_id int
+
+		// GET trip
+		query := fmt.Sprintf("select driver_id from trip where id=" + tripID)
+		results, err := database.Query(query)
+		if err != nil {
+			panic(err.Error())
+		}
+		results.Next()
+		err = results.Scan(&driver_id)
+		if err != nil {
+			panic(err)
+		}
+		if driver_id != id {
+			// Return unauthorized status code
+			return
+		}
+		_, err = database.Query("UPDATE trip SET end=NOW() where id=" + tripID)
+		if err != nil {
+			panic(err.Error())
+		}
+
+		// Update availability of driver
+		url := fmt.Sprintf("http://localhost:5001/api/v1/drivers/%d/availability", driver_id)
+		newReqBody, err := json.Marshal(map[string]interface{}{"availability": true})
+		if err != nil {
+			panic(err.Error())
+		}
+		request, err := http.NewRequest("PATCH", url, bytes.NewBuffer(newReqBody))
+		if err != nil {
+			// Fail to set availability
+			// TODO: Log
+			return
+		}
+		request.Header.Set("Content-Type", "application/json")
+		client := &http.Client{}
+		client.Do(request)
+
+		w.Write([]byte("200 - Trip updated"))
+	}
+
+}
+
+func currentTripHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization")
+
+	if r.Method == http.MethodOptions {
+		return
+	}
+
+	if r.Method == "GET" {
+		id, isPassenger, authenticated := authentication(r)
+		if !authenticated {
+			return
+		}
+		var query string
+		if isPassenger {
+			query = fmt.Sprintf("select * from trip where passenger_id=%d order by requested desc limit 1", id)
+		} else {
+			query = fmt.Sprintf("select * from trip where driver_id=%d and end is null order by requested desc limit 1;", id)
+		}
+		results := database.QueryRow(query)
+		var trip trip
+		err := results.Scan(&trip.ID, &trip.PickUp, &trip.DropOff, &trip.PassengerID, &trip.DriverID, &trip.Requested, &trip.Start, &trip.End)
+		if err != nil {
+			panic(err.Error())
+		}
+		json.NewEncoder(w).Encode(trip)
+	}
+}
+
 func tripHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization")
@@ -74,7 +206,7 @@ func tripHandler(w http.ResponseWriter, r *http.Request) {
 		for results.Next() {
 			// map this type  to the record in the table
 			var trip trip
-			err = results.Scan(&trip.ID, &trip.PickUp, &trip.DropOff, &trip.PassengerID, &trip.DriverID, &trip.Start, &trip.End)
+			err = results.Scan(&trip.ID, &trip.PickUp, &trip.DropOff, &trip.PassengerID, &trip.DriverID, &trip.Requested, &trip.Start, &trip.End)
 
 			if err != nil {
 				panic(err.Error())
@@ -126,7 +258,7 @@ func tripHandler(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
-			query := fmt.Sprintf("INSERT INTO trip (pickup,dropoff,passenger_id,driver_id) VALUES ('%s','%s',%d,%d)", trip.PickUp, trip.DropOff, id, driver_id)
+			query := fmt.Sprintf("INSERT INTO trip (pickup,dropoff,passenger_id,driver_id,requested) VALUES ('%s','%s',%d,%d,NOW())", trip.PickUp, trip.DropOff, id, driver_id)
 
 			_, err = database.Query(query)
 			if err != nil {
@@ -152,53 +284,6 @@ func tripHandler(w http.ResponseWriter, r *http.Request) {
 			// return driver
 			json.NewEncoder(w).Encode(map[string]interface{}{"FirstName": first_name, "LastName": last_name, "LicenseNumber": license_number})
 		}
-		if r.Method == "PATCH" {
-			var trip trip
-			reqBody, err := ioutil.ReadAll(r.Body)
-			if err != nil {
-				w.WriteHeader(http.StatusUnprocessableEntity)
-				w.Write([]byte("422 - Please supply course information in JSON format"))
-				return
-			}
-			// authenticate user
-			id, isPassenger, authenticated := authentication(r)
-			// Only drivers can update
-			if !authenticated || isPassenger {
-				// Return HTTP error here
-				return
-			}
-
-			json.Unmarshal(reqBody, &trip)
-			// GET trip
-			query := fmt.Sprintf("select * from trip where id=" + string(trip.ID))
-			results, err := database.Query(query)
-			if err != nil {
-				panic(err.Error())
-			}
-			results.Next()
-			err = results.Scan(&trip.ID, &trip.PickUp, &trip.DriverID, &trip.PassengerID, &trip.DriverID, &trip.Start, &trip.End)
-			if err != nil {
-				panic(err)
-			}
-			if trip.DriverID != id {
-				// Return unauthorized status code
-				return
-			}
-
-			query = ""
-			// Only start or end can be updated
-			if trip.Start.Time.String() != "" {
-				query = fmt.Sprintf("UPDATE trip SET start='%s'", trip.Start.Time.String())
-			} else if trip.End.Time.String() != "" {
-				query = fmt.Sprintf("UPDATE trip SET end='%s'", trip.End.Time.String())
-			}
-
-			_, err = database.Query(query)
-			if err != nil {
-				panic(err.Error())
-			}
-			w.Write([]byte("200 - Trip updated"))
-		}
 	}
 }
 
@@ -215,7 +300,10 @@ func main() {
 
 	router := mux.NewRouter()
 
-	router.HandleFunc("/api/v1/trips", tripHandler).Methods(http.MethodPatch, http.MethodPost, http.MethodOptions, http.MethodGet)
+	router.HandleFunc("/api/v1/trips", tripHandler).Methods(http.MethodPost, http.MethodOptions, http.MethodGet)
+	router.HandleFunc("/api/v1/trip/{ID}/start", startTripHandler).Methods(http.MethodPost, http.MethodOptions)
+	router.HandleFunc("/api/v1/trip/{ID}/end", endTripHandler).Methods(http.MethodPost, http.MethodOptions)
+	router.HandleFunc("/api/v1/current-trip", currentTripHandler).Methods(http.MethodOptions, http.MethodGet)
 	router.Use(mux.CORSMethodMiddleware(router))
 	fmt.Println("Trips Microservice")
 	fmt.Println("Listening at port 5004")

@@ -48,7 +48,7 @@ export default {
                 this.$router.push("new-trip")
             }
             else{
-                alert("Logged")
+                this.$router.push("trip-management")
             }
         }
     },

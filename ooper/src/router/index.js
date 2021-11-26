@@ -6,6 +6,7 @@ import NewTrip from "../views/Passenger/New Trip.vue";
 
 const ViewTrips = () => import("../views/Passenger/View Trips.vue")
 const UpdateAccount = () => import("../views/Update Account.vue")
+const TripManagement = () => import("../views/Driver/Trip Management.vue")
 
 const routes = [
   {
@@ -37,6 +38,11 @@ const routes = [
     path:"/update-account",
     name:"update-account",
     component:UpdateAccount
+  },
+  {
+    path:"//trip-management",
+    name:"/trip-management",
+    component:TripManagement
   },
 ];
 

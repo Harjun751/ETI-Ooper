@@ -85,7 +85,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			// return HTTP error here
 			return
 		}
-		token := genJWT(id, email, true)
+		token := genJWT(id, email, isPassenger)
 		w.Header().Set("Content-Type", "application/json")
 		response := map[string]interface{}{"token": token, "isPassenger": isPassenger}
 		// Encode map to json string
