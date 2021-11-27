@@ -22,7 +22,6 @@
 
 <script>
 import { store } from "./state"
-
 export default {
     data(){
         return{
@@ -119,5 +118,47 @@ input:invalid{
 }
 input:valid{
   border-bottom: 3px solid var(--bright-yellow);
+}
+
+/* sweet alert styles */
+.custom-swal-modal{
+  background:var(--purple) !important;
+  font-family: "Century Gothic" !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+.custom-swal-modal .swal2-title,
+.custom-swal-modal .swal2-html-container{
+  color:var(--bright-yellow) !important;
+}
+.custom-swal-icon{
+  color:var(--bright-yellow) !important;
+  border-color:var(--bright-yellow) !important;
+}
+.custom-swal-icon .swal2-success-line-tip,
+.custom-swal-icon .swal2-success-line-ring,
+.custom-swal-icon .swal2-success-line-fix,
+.custom-swal-icon .swal2-success-line-long{
+  background-color:var(--bright-yellow) !important;
+}
+.custom-swal-icon .swal2-success-ring{
+  border:.25em solid rgba(255,255,255,.2) !important;
+}
+.custom-swal-content{
+  color:var(--bright-yellow) !important;
+}
+.custom-swal-button{
+  padding:0px !important;
+  text-align:center;
+  background:var(--bright-yellow) !important;
+  color:var(--purple) !important;
+  font-size:23px !important;
+  font-weight:bold !important;
+  border-radius: 50px !important;
+  width:268px !important;
+  height:68px !important;
+}
+.custom-swal-button:hover{
+  background:var(--dark-yellow) !important;
 }
 </style>

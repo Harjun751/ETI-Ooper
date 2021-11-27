@@ -18,6 +18,7 @@
 <script>
 import Button from "../components/button.vue"
 import { store } from "../state"
+const Swal = require('sweetalert2')
 export default {
     components:{Button},
     data(){
@@ -52,8 +53,18 @@ export default {
                 },
             }).then((resp)=>{
                 if (resp.status==200) {
-                    // TODO: replace with nicer alert
-                    alert("Updated Account!")
+                    Swal.fire({
+                        title: 'done!',
+                        text: 'your account has been updated',
+                        icon: 'success',
+                        confirmButtonText: 'close',
+                        customClass:{
+                            popup: 'custom-swal-modal',
+                            icon: 'custom-swal-icon',
+                            content: 'custom-swal-content',
+                            confirmButton: 'custom-swal-button'
+                        }
+                    })
                 }
             })
         }

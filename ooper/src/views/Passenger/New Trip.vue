@@ -18,6 +18,7 @@
 <script>
 import Button from "../../components/button.vue"
 import { store } from "../../state"
+const Swal = require('sweetalert2')
 export default {
     components:{Button},
     data(){
@@ -62,8 +63,18 @@ export default {
             })
             .then(async (res)=> await res.json())
             .then((data)=>{
-                //TODO: Replace with a nicer alert
-                alert("Your driver is " + data.FirstName + " " + data.LastName + "\nLicense Number: " + data.LicenseNumber)
+                Swal.fire({
+                    title: 'done!',
+                    text: "Your driver is " + data.FirstName + " " + data.LastName + "\nLicense Number: " + data.LicenseNumber,
+                    icon: 'success',
+                    confirmButtonText: 'close',
+                    customClass:{
+                        popup: 'custom-swal-modal',
+                        icon: 'custom-swal-icon',
+                        content: 'custom-swal-content',
+                        confirmButton: 'custom-swal-button'
+                    }
+                })
             })
         }
     }
