@@ -1,25 +1,26 @@
 <template>
     <section>
-        <div class="row" v-for="item in data" :key="item.id">
-            <span>></span>&nbsp;
-            <span>{{item.date}}</span>
-            <span class="origin">{{item.PickUp}}</span>
-            &nbsp;<span>-</span>&nbsp;
-            <span>{{item.DropOff}}</span>
-            <span class="time">{{item.time}}</span>
+        <div class="row" v-for="item in data" :key="item.ID">
+            <TripDetails :item="item"/>
         </div>
     </section>
 </template>
 
 <script>
 import { store } from "../../state"
+import TripDetails from "../../components/tripDetails.vue"
 export default {
+components:{TripDetails},
 data(){
     return{
         data:[]
     }
 },
+methods:{
+
+},
 async mounted(){
+    var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     await fetch("http://localhost:5004/api/v1/trips",{
         method:"GET",
         headers: {
@@ -29,7 +30,22 @@ async mounted(){
     })
     .then(async (res)=> await res.json())
     .then((data)=>{
-        console.log(data)
+        for (var i in data){
+            var date
+            if (data[i]["Requested"]["Valid"]){
+                date = new Date(data[i]["Requested"]["Time"])
+                data[i]["Requested"] = date.getDate() + " " +  months[date.getMonth()] + ", " + date.getFullYear()
+                data[i]["Time"] = date.toLocaleTimeString()
+            }
+            if (data[i]["Start"]["Valid"]){
+                date = new Date(data[i]["Start"]["Time"])
+                data[i]["Start"] = date.toLocaleDateString() + " " + date.toLocaleTimeString()
+            }
+            if (data[i]["End"]["Valid"]){
+                date = new Date(data[i]["End"]["Time"])
+                data[i]["End"] = date.toLocaleDateString() + " " + date.toLocaleTimeString()
+            }
+        }
         this.data = data
     })
 }
@@ -45,11 +61,5 @@ async mounted(){
 }
 section{
     margin-top:150px;
-}
-.time{
-    float:right;
-}
-.origin{
-    margin-left:100px;
 }
 </style>
