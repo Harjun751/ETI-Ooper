@@ -45,7 +45,9 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		var authenticationInfo map[string]interface{}
 		err = json.Unmarshal(reqBody, &authenticationInfo)
 		if err != nil {
-			panic(err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("500 - Internal Error"))
+			return
 		}
 		isPassenger := authenticationInfo["isPassenger"].(bool)
 		email := authenticationInfo["email"].(string)
@@ -69,12 +71,18 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 				salt = result["Salt"].(string)
 				passHash = result["Password"].(string)
 			}
+		} else if err!=nil {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			w.Write([]byte("503 - Endpoint Unavailable"))
+			return
 		}
 
 		// Convert salt from hex string to byte array
 		decodedSalt, err := hex.DecodeString(salt)
 		if err != nil {
-			panic(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("500 - Internal Error"))
+			return
 		}
 		// Type assert password into string
 		password := authenticationInfo["password"].(string)
@@ -82,7 +90,8 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 
 		hashedInput := sha256.Sum256(saltedPassword)
 		if fmt.Sprintf("%x", hashedInput) != passHash {
-			// return HTTP error here
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte("403 - Authentication failed"))
 			return
 		}
 		token := genJWT(id, email, isPassenger)
@@ -91,7 +100,9 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		// Encode map to json string
 		jsonResp, err := json.Marshal(response)
 		if err != nil {
-			panic(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("500 - Internal Error"))
+			return
 		}
 		w.Write(jsonResp)
 	}

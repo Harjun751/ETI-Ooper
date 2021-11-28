@@ -90,14 +90,18 @@ func passengersHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		results, err := database.Query(query)
 		if err != nil {
-			panic(err.Error())
+			w.WriteHeader(http.StatusServiceUnavailable)
+			w.Write([]byte("503 - Database Unavailable"))
+			return
 		}
 		results.Next()
 		var passenger passenger
 		err = results.Scan(&passenger.ID, &passenger.FirstName, &passenger.LastName, &passenger.MobileNumber, &passenger.Email, &passenger.Password, &passenger.Salt)
 
 		if err != nil {
-			panic(err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("500 - Internal Error"))
+			return
 		}
 
 		json.NewEncoder(w).Encode(passenger)
@@ -129,7 +133,9 @@ func passengersHandler(w http.ResponseWriter, r *http.Request) {
 			query := fmt.Sprintf("INSERT INTO passenger (first_name,last_name,mobile_number,email,password,salt) VALUES ('%s', '%s', %d, '%s', '%s', '%s')", newPassenger.FirstName, newPassenger.LastName, newPassenger.MobileNumber, newPassenger.Email, hash, salt)
 			_, err = database.Query(query)
 			if err != nil {
-				panic(err.Error())
+				w.WriteHeader(http.StatusServiceUnavailable)
+				w.Write([]byte("503 - Database Unavailable"))
+				return
 			}
 			w.Write([]byte("200 - Account created"))
 		}
@@ -163,7 +169,9 @@ func passengersHandler(w http.ResponseWriter, r *http.Request) {
 			query := fmt.Sprintf("UPDATE passenger SET first_name='%s',last_name='%s',mobile_number=%d,email='%s' WHERE ID=%d;", newPassenger.FirstName, newPassenger.LastName, newPassenger.MobileNumber, newPassenger.Email, id)
 			_, err = database.Query(query)
 			if err != nil {
-				panic(err.Error())
+				w.WriteHeader(http.StatusServiceUnavailable)
+				w.Write([]byte("503 - Database Unavailable"))
+				return
 			}
 		}
 	}

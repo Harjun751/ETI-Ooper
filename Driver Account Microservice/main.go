@@ -100,14 +100,16 @@ func setAvailabilityDriver(w http.ResponseWriter, r *http.Request) {
 		availability := bodyData["availability"].(bool)
 		ID, err := strconv.Atoi(id)
 		if err != nil {
-			// Return err
-			fmt.Println("ID not int")
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("400 - Malformed body"))
 			return
 		}
 		query := fmt.Sprintf("UPDATE driver set available=%t where id=%d", availability, ID)
 		_, err = database.Query(query)
 		if err != nil {
-			panic(err.Error())
+			w.WriteHeader(http.StatusServiceUnavailable)
+			w.Write([]byte("503 - Database Unavailable"))
+			return
 		}
 		w.Write([]byte("200 - Updated"))
 	}
@@ -124,13 +126,14 @@ func getAvailableDriver(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		results, err := database.Query("select id,first_name,last_name,license_number from driver where available=true limit 1;")
 		if err != nil {
-			panic(err.Error())
+			w.WriteHeader(http.StatusServiceUnavailable)
+			w.Write([]byte("503 - Database Unavailable"))
+			return
 		}
 		res := results.Next()
 		if !res {
-			// No  available drivers
-			// Handle this somehow
-			fmt.Println("No available drivers")
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte("404 - No data"))
 			return
 		}
 		var id int
@@ -139,7 +142,9 @@ func getAvailableDriver(w http.ResponseWriter, r *http.Request) {
 		var licenseNumber string
 		err = results.Scan(&id, &firstName, &lastName, &licenseNumber)
 		if err != nil {
-			panic(err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("500 - Internal Error"))
+			return
 		}
 		json.NewEncoder(w).Encode(map[string]interface{}{"ID": id, "FirstName": firstName, "LastName": lastName, "LicenseNumber": licenseNumber})
 	}
@@ -165,14 +170,18 @@ func driversHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		results, err := database.Query(query)
 		if err != nil {
-			panic(err.Error())
+			w.WriteHeader(http.StatusServiceUnavailable)
+			w.Write([]byte("503 - Database Unavailable"))
+			return
 		}
 		results.Next()
 		var driver driver
 		err = results.Scan(&driver.ID, &driver.FirstName, &driver.LastName, &driver.MobileNumber, &driver.Email, &driver.ICNumber, &driver.LicenseNumber, &driver.Password, &driver.Salt, &driver.Available)
 
 		if err != nil {
-			panic(err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("500 - Internal Error"))
+			return
 		}
 
 		json.NewEncoder(w).Encode(driver)
@@ -204,7 +213,9 @@ func driversHandler(w http.ResponseWriter, r *http.Request) {
 			query := fmt.Sprintf("INSERT INTO driver (first_name,last_name,mobile_number,email,ic_number,license_number,password,salt) VALUES ('%s', '%s', %d, '%s', '%s', '%s','%s','%s')", newDriver.FirstName, newDriver.LastName, newDriver.MobileNumber, newDriver.Email, newDriver.ICNumber, newDriver.LicenseNumber, hash, salt)
 			_, err = database.Query(query)
 			if err != nil {
-				panic(err.Error())
+				w.WriteHeader(http.StatusServiceUnavailable)
+				w.Write([]byte("503 - Database Unavailable"))
+				return
 			}
 			w.Write([]byte("200 - Account created"))
 		}
@@ -238,7 +249,9 @@ func driversHandler(w http.ResponseWriter, r *http.Request) {
 			query := fmt.Sprintf("UPDATE driver SET first_name='%s',last_name='%s',mobile_number=%d,email='%s',ic_number='%s',license_nmber='%s' WHERE ID=%d;", newDriver.FirstName, newDriver.LastName, newDriver.MobileNumber, newDriver.Email, newDriver.ICNumber, newDriver.LicenseNumber, id)
 			_, err = database.Query(query)
 			if err != nil {
-				panic(err.Error())
+				w.WriteHeader(http.StatusServiceUnavailable)
+				w.Write([]byte("503 - Database Unavailable"))
+				return
 			}
 		}
 	}

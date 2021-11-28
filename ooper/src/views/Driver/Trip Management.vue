@@ -1,19 +1,24 @@
 <template>
-  <div id="map">
-      <iframe
-    width="680"
-    height="600"
-    frameborder="0" style="border:3px solid var(--bright-yellow);border-radius:50px;"
-    :src="fullURL" allowfullscreen>
-    </iframe>
-  </div>
-  <div id="form">
-    <input v-model="origin" type="text" placeholder="start point" disabled/>
-    <input v-model="destination" type="text" placeholder="end point" disabled/>
-    <p>fee:<span id="value">{{ price }}</span></p>
-    <Button text="start trip" @click="startTrip"/>
-    <Button text="end trip" @click="endTrip"/>
-  </div>
+    <div v-if="exists">
+        <div id="map">
+            <iframe
+            width="680"
+            height="600"
+            frameborder="0" style="border:3px solid var(--bright-yellow);border-radius:50px;"
+            :src="fullURL" allowfullscreen>
+            </iframe>
+        </div>
+        <div id="form">
+            <input v-model="origin" type="text" placeholder="start point" disabled/>
+            <input v-model="destination" type="text" placeholder="end point" disabled/>
+            <p>fee:<span id="value">{{ price }}</span></p>
+            <Button text="start trip" @click="startTrip"/>
+            <Button text="end trip" @click="endTrip"/>
+        </div>
+    </div>
+    <div v-if="exists==false">
+        <h3 style="color:var(--bright-yellow);">No Trips!</h3>
+    </div>
 </template>
 
 <script>
@@ -28,7 +33,8 @@ export default {
             price:"",
             start:"",
             end:"",
-            tripID:""
+            tripID:"",
+            exists:null
         }
     },
     computed:{
@@ -44,8 +50,15 @@ export default {
             'Authorization': "Bearer " +  store.state.jwtAccessToken
         },
         })
-        .then(async (res)=> await res.json())
+        .then(async (res)=>{
+            if (res.status==404){
+                this.exists = false
+                throw "No data"
+            }
+            await res.json()
+        })
         .then((data)=>{
+            this.exists = true
             this.origin = data.PickUp
             this.destination = data.DropOff
             this.start = data.Start
