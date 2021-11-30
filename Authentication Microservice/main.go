@@ -71,7 +71,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 				salt = result["Salt"].(string)
 				passHash = result["Password"].(string)
 			}
-		} else if err!=nil {
+		} else if err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			w.Write([]byte("503 - Endpoint Unavailable"))
 			return
