@@ -108,9 +108,58 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func authHandler(w http.ResponseWriter, r *http.Request){
+	// set CORS headers
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept")
+	if r.Method == "POST" {
+		reqBody, err := ioutil.ReadAll(r.Body)
+
+		if err != nil {
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			w.Write([]byte("422 - Please supply course information in JSON format"))
+			return
+		}
+
+		var authorizeInfo map[string]interface{}
+		err = json.Unmarshal(reqBody, &authorizeInfo)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("500 - Internal Error"))
+			return
+		}
+
+		headerToken := authorizeInfo["authorization"].(string)
+		// Decode the jwt and ensure it's readable
+		token, err := jwt.Parse(headerToken[7:], func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			}
+
+			return secret, nil
+		})
+		if (err!=nil){
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte("403 - Invalid Token"))
+			return
+		}
+		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+			id := int(claims["id"].(float64))
+			isPassenger := claims["isPassenger"].(bool)
+			json.NewEncoder(w).Encode(map[string]interface{}{"ID":id,"isPassenger":isPassenger})
+		} else {
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte("403 - Invalid Token"))
+			return
+		}
+	}
+}
+
+
 func main() {
 	router := mux.NewRouter()
 	router.HandleFunc("/api/v1/login", loginHandler)
+	router.HandleFunc("/api/v1/authorize", authHandler)
 	fmt.Println("Authentication Microservice")
 	fmt.Println("Listening at port 5003")
 	log.Fatal(http.ListenAndServe(":5003", router))

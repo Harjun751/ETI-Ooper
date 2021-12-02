@@ -11,7 +11,6 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/golang-jwt/jwt"
 	"github.com/gorilla/mux"
 )
 
@@ -28,25 +27,36 @@ type trip struct {
 
 var database *sql.DB
 
-func authentication(r *http.Request) (int, bool, bool) {
-	var secret = []byte("it took the night to believe")
-	headerToken := r.Header.Get("Authorization")
-	// Decode the jwt and ensure it's readable
-	token, err := jwt.Parse(headerToken[7:], func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-
-		return secret, nil
-	})
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		id := int(claims["id"].(float64))
-		isPassenger := claims["isPassenger"].(bool)
-		return id, isPassenger, true
-	} else {
-		fmt.Println(err)
-		return 0, true, false
+func getAuthDetails(header string) (id int, isPassenger bool, errorStatusCode int, errorText string){
+	errorStatusCode = 0
+	errorText = ""
+	newReqBody, err := json.Marshal(map[string]interface{}{"authorization": header})
+	if err != nil {
+		errorStatusCode = http.StatusInternalServerError
+		errorText = "500 - Internal Error"
+		return
 	}
+	// POST to authentication microservice with details
+	resp, err := http.Post("http://localhost:5003/api/v1/authorize","application/json",bytes.NewBuffer(newReqBody))
+	if err == nil {
+		if (resp.StatusCode!=200){
+			errorStatusCode = http.StatusUnprocessableEntity
+			errorText = "401 - Access Token Incorrect"
+			return
+		}
+		defer resp.Body.Close()
+		if body, err := ioutil.ReadAll(resp.Body); err == nil {
+			var result map[string]interface{}
+			json.Unmarshal(body, &result)
+			id = int(result["ID"].(float64))
+			isPassenger = result["isPassenger"].(bool)
+		}
+	} else if err != nil {
+		errorStatusCode = http.StatusServiceUnavailable
+		errorText = "503 - Authentication unavailable"
+		return
+	}
+	return
 }
 
 func startTripHandler(w http.ResponseWriter, r *http.Request) {
@@ -59,9 +69,14 @@ func startTripHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "POST" {
 		// authenticate user
-		id, isPassenger, authenticated := authentication(r)
+		id, isPassenger, errorStatusCode, errorText := getAuthDetails(r.Header.Get("Authorization"))
+		if (errorStatusCode != 0){
+			w.WriteHeader(errorStatusCode)
+			w.Write([]byte(errorText))
+			return
+		}
 		// Only drivers can update
-		if !authenticated || isPassenger {
+		if isPassenger {
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte("401 - Not authorized for action"))
 			return
@@ -111,9 +126,14 @@ func endTripHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "POST" {
 		// authenticate user
-		id, isPassenger, authenticated := authentication(r)
+		id, isPassenger, errorStatusCode, errorText := getAuthDetails(r.Header.Get("Authorization"))
+		if (errorStatusCode != 0){
+			w.WriteHeader(errorStatusCode)
+			w.Write([]byte(errorText))
+			return
+		}
 		// Only drivers can update
-		if !authenticated || isPassenger {
+		if isPassenger {
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte("401 - Unauthorized to perform action"))
 			return
@@ -182,10 +202,10 @@ func currentTripHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == "GET" {
-		id, isPassenger, authenticated := authentication(r)
-		if !authenticated {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte("401 - Unauthorized to perform action"))
+		id, isPassenger, errorStatusCode, errorText := getAuthDetails(r.Header.Get("Authorization"))
+		if (errorStatusCode != 0){
+			w.WriteHeader(errorStatusCode)
+			w.Write([]byte(errorText))
 			return
 		}
 		var query string
@@ -213,14 +233,16 @@ func tripHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
 		return
 	}
+	// authenticate user
+	// Both GET and POST require authentication so do it here
+	id, isPassenger, errorStatusCode, errorText := getAuthDetails(r.Header.Get("Authorization"))
+	if (errorStatusCode != 0){
+		w.WriteHeader(errorStatusCode)
+		w.Write([]byte(errorText))
+		return
+	}
 
 	if r.Method == "GET" {
-		id, _, authenticated := authentication(r)
-		if !authenticated {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte("401 - Unauthorized to perform action"))
-			return
-		}
 		query := fmt.Sprintf("select * from trip where passenger_id=%d", id)
 		results, err := database.Query(query)
 		if err != nil {
@@ -254,9 +276,7 @@ func tripHandler(w http.ResponseWriter, r *http.Request) {
 				w.Write([]byte("422 - Please supply course information in JSON format"))
 				return
 			}
-			// authenticate user
-			id, isPassenger, authenticated := authentication(r)
-			if !authenticated || !isPassenger {
+			if !isPassenger {
 				w.WriteHeader(http.StatusUnauthorized)
 				w.Write([]byte("401 - Unauthorized to perform action"))
 				return

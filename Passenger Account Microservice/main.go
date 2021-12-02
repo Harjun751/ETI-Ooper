@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"database/sql"
 	"encoding/json"
@@ -11,7 +12,6 @@ import (
 	"net/http"
 
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/golang-jwt/jwt"
 	"github.com/gorilla/mux"
 )
 
@@ -27,25 +27,36 @@ type passenger struct {
 
 var database *sql.DB
 
-func authentication(r *http.Request) (int, bool, bool) {
-	var secret = []byte("it took the night to believe")
-	headerToken := r.Header.Get("Authorization")
-	// Decode the jwt and ensure it's readable
-	token, err := jwt.Parse(headerToken[7:], func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-
-		return secret, nil
-	})
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		id := int(claims["id"].(float64))
-		isPassenger := claims["isPassenger"].(bool)
-		return id, isPassenger, true
-	} else {
-		fmt.Println(err)
-		return 0, true, false
+func getAuthDetails(header string) (id int, isPassenger bool, errorStatusCode int, errorText string){
+	errorStatusCode = 0
+	errorText = ""
+	newReqBody, err := json.Marshal(map[string]interface{}{"authorization": header})
+	if err != nil {
+		errorStatusCode = http.StatusInternalServerError
+		errorText = "500 - Internal Error"
+		return
 	}
+	// POST to authentication microservice with details
+	resp, err := http.Post("http://localhost:5003/api/v1/authorize","application/json",bytes.NewBuffer(newReqBody))
+	if err == nil {
+		if (resp.StatusCode!=200){
+			errorStatusCode = http.StatusUnprocessableEntity
+			errorText = "401 - Access Token Incorrect"
+			return
+		}
+		defer resp.Body.Close()
+		if body, err := ioutil.ReadAll(resp.Body); err == nil {
+			var result map[string]interface{}
+			json.Unmarshal(body, &result)
+			id = int(result["ID"].(float64))
+			isPassenger = result["isPassenger"].(bool)
+		}
+	} else if err != nil {
+		errorStatusCode = http.StatusServiceUnavailable
+		errorText = "503 - Authentication unavailable"
+		return
+	}
+	return
 }
 
 func saltNHash(password string) (string, string) {
@@ -144,8 +155,13 @@ func passengersHandler(w http.ResponseWriter, r *http.Request) {
 			var newPassenger passenger
 			reqBody, err := ioutil.ReadAll(r.Body)
 			// authenticate user
-			id, isPassenger, authenticated := authentication(r)
-			if !authenticated || !isPassenger {
+			id, isPassenger, errorStatusCode, errorText := getAuthDetails(r.Header.Get("Authorization"))
+			if (errorStatusCode != 0){
+				w.WriteHeader(errorStatusCode)
+				w.Write([]byte(errorText))
+				return
+			}
+			if !isPassenger {
 				w.WriteHeader(http.StatusUnprocessableEntity)
 				w.Write([]byte("401 - Access token incorrect/unauthorized"))
 				return
