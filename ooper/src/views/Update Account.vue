@@ -9,7 +9,6 @@
       <input type="email" v-model="email" placeholder="e-mail address" required/>
   </div>
   <div class="row" v-if="isPassenger==false">
-      <input type="text" v-model="ic" placeholder="identification number" required/>
       <input type="email" v-model="license" placeholder="car license number" required/>
   </div>
   <Button text="update" @click="updateUser" />
@@ -27,7 +26,6 @@ export default {
             firstName:"",
             lastName:"",
             mobileNumber:null,
-            ic:"",
             license:"",
             email:""
         }
@@ -41,7 +39,6 @@ export default {
             }
             else if (this.isPassenger == false){
                 url = "http://localhost:5001/api/v1/drivers"
-                data["ICNumber"] = this.ic
                 data["LicenseNumber"] = this.license
             }
             await fetch(url,{

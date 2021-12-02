@@ -10,6 +10,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
 	"strconv"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -262,7 +263,7 @@ func driversHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			query := fmt.Sprintf("UPDATE driver SET first_name='%s',last_name='%s',mobile_number=%d,email='%s',ic_number='%s',license_number='%s' WHERE ID=%d;", newDriver.FirstName, newDriver.LastName, newDriver.MobileNumber, newDriver.Email, newDriver.ICNumber, newDriver.LicenseNumber, id)
+			query := fmt.Sprintf("UPDATE driver SET first_name='%s',last_name='%s',mobile_number=%d,email='%s',license_number='%s' WHERE ID=%d;", newDriver.FirstName, newDriver.LastName, newDriver.MobileNumber, newDriver.Email, newDriver.LicenseNumber, id)
 			_, err = database.Query(query)
 			if err != nil {
 				w.WriteHeader(http.StatusServiceUnavailable)
@@ -274,7 +275,7 @@ func driversHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	db, err := sql.Open("mysql", "user:password@tcp(127.0.0.1:3306)/ooper")
+	db, err := sql.Open("mysql", "user:password@tcp("+os.Getenv("MYSQL_HOST")+")/ooper")
 
 	//  handle error
 	if err != nil {
@@ -293,5 +294,7 @@ func main() {
 	router.Use(mux.CORSMethodMiddleware(router))
 	fmt.Println("Driver Microservice")
 	fmt.Println("Listening at port 5001")
+	fmt.Println(os.Getenv("MYSQL_HOST"))
+	fmt.Println("HI")
 	log.Fatal(http.ListenAndServe(":5001", router))
 }

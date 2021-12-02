@@ -1,0 +1,71 @@
+version: "3.7"
+
+services:
+  frontend:
+    build: "Ooper/"
+    ports:
+      - 8080:8080
+
+  auth-microservice:
+    build: "Authentication Microservice/"
+    ports:
+      - 5003:5003
+
+  driver-microservice:
+    build: "Driver Account Microservice/"
+    ports:
+      - 5001:5001
+    environment:
+      MYSQL_HOST: driver-db
+  driver-db:
+    image: mysql:latest
+    volumes:
+      - driver-db-data:/var/lib/driver-db-data
+    ports:
+      - 3301:3306
+    environment:
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+      MYSQL_DATABASE: drivers
+      
+  passenger-microservice:
+    build: "Passenger Account Microservice/"
+    ports:
+      - 5000:5000
+    environment:
+      MYSQL_HOST: passenger-db
+  passenger-db:
+    image: mysql:latest
+    volumes:
+      - passenger-db-data:/var/lib/passenger-db-data
+    ports:
+      - 3000:3306
+    environment:
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+      MYSQL_DATABASE: passengers
+
+  trip-microservice:
+    build: "Trips Microservice/"
+    ports:
+      - 5004:5004
+    environment:
+      MYSQL_HOST: trip-db
+  trip-db:
+    image: mysql:latest
+    ports:
+      - 3304:3306
+    volumes:
+      - trip-db-data:/var/lib/trip-db-data
+    environment:
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+      MYSQL_DATABASE: trips
+
+volumes:
+  driver-db-data:
+  passenger-db-data:
+  trip-db-data:
