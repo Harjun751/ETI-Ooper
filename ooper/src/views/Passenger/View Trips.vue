@@ -21,7 +21,7 @@ methods:{
 },
 async mounted(){
     var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    await fetch("http://localhost:5004/api/v1/trips",{
+    await fetch(process.env.VUE_APP_TRIP_MS_HOST+"/api/v1/trips",{
         method:"GET",
         headers: {
             'Content-Type': 'application/json',

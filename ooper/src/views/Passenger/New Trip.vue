@@ -53,7 +53,7 @@ export default {
     methods:{
         async requestTrip(){
             var data = {"PickUp":this.origin,"DropOff":this.destination}
-            await fetch("http://localhost:5004/api/v1/trips",{
+            await fetch(process.env.VUE_APP_TRIP_MS_HOST+"/api/v1/trips",{
                 body: JSON.stringify(data),
                 method:"POST",
                 headers: {

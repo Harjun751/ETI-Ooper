@@ -17,6 +17,7 @@ import Button from "../components/button.vue"
 import Passenger from "../components/passenger.vue"
 import Driver from "../components/driver.vue"
 import { store } from "../state"
+const Swal = require('sweetalert2')
 export default {
     components:{Toggle,Button,Passenger,Driver},
     data(){
@@ -32,24 +33,56 @@ export default {
         },
         async login(){
             var data = {"email":this.email,"password":this.password,"isPassenger":this.isPassenger}
-            await fetch("http://localhost:5003/api/v1/login",{
+            await fetch(process.env.VUE_APP_AUTH_MS_HOST+"/api/v1/login",{
                 body: JSON.stringify(data),
                 method:"POST",
                 headers: {
                     'Content-Type': 'application/json',
                 },
             })
-            .then(async (res)=> await res.json())
+            .then(async (res)=> {
+                if (res.status==403){
+                    Swal.fire({
+                        title: 'failed...',
+                        text: 'incorrect username or password',
+                        icon: 'error',
+                        confirmButtonText: 'close',
+                        customClass:{
+                            popup: 'custom-swal-modal',
+                            icon: 'custom-swal-icon',
+                            content: 'custom-swal-content',
+                            confirmButton: 'custom-swal-button'
+                        }
+                    })
+                }
+                return await res.json()
+            })
             .then((data)=>{
                 store.setJWTAccessToken(data.token)
                 store.setIsPassenger(data.isPassenger)
             })
-            if (this.isPassenger){
+            .then(()=>{
+                if (this.isPassenger){
                 this.$router.push("new-trip")
-            }
-            else{
-                this.$router.push("trip-management")
-            }
+                }
+                else if (!this.isPassenger){
+                    this.$router.push("trip-management")
+                }
+            })
+            .catch(()=>{
+                Swal.fire({
+                    title: 'failed...',
+                    text: 'failed to login due to server issues',
+                    icon: 'error',
+                    confirmButtonText: 'close',
+                    customClass:{
+                        popup: 'custom-swal-modal',
+                        icon: 'custom-swal-icon',
+                        content: 'custom-swal-content',
+                        confirmButton: 'custom-swal-button'
+                    }
+                })
+            })
         }
     },
 }

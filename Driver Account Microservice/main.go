@@ -32,7 +32,7 @@ type driver struct {
 
 var database *sql.DB
 
-func getAuthDetails(header string) (id int, isPassenger bool, errorStatusCode int, errorText string){
+func getAuthDetails(header string) (id int, isPassenger bool, errorStatusCode int, errorText string) {
 	errorStatusCode = 0
 	errorText = ""
 	newReqBody, err := json.Marshal(map[string]interface{}{"authorization": header})
@@ -42,9 +42,9 @@ func getAuthDetails(header string) (id int, isPassenger bool, errorStatusCode in
 		return
 	}
 	// POST to authentication microservice with details
-	resp, err := http.Post("http://localhost:5003/api/v1/authorize","application/json",bytes.NewBuffer(newReqBody))
+	resp, err := http.Post(os.Getenv("AUTH_MS_HOST")+"/api/v1/authorize", "application/json", bytes.NewBuffer(newReqBody))
 	if err == nil {
-		if (resp.StatusCode!=200){
+		if resp.StatusCode != 200 {
 			errorStatusCode = http.StatusUnprocessableEntity
 			errorText = "401 - Access Token Incorrect"
 			return
@@ -121,6 +121,7 @@ func setAvailabilityDriver(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			w.Write([]byte("503 - Database Unavailable"))
+			log.Print(err)
 			return
 		}
 		w.Write([]byte("200 - Updated"))
@@ -140,6 +141,7 @@ func getAvailableDriver(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			w.Write([]byte("503 - Database Unavailable"))
+			log.Print(err)
 			return
 		}
 		res := results.Next()
@@ -184,6 +186,7 @@ func driversHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			w.Write([]byte("503 - Database Unavailable"))
+			log.Print(err)
 			return
 		}
 		results.Next()
@@ -227,6 +230,7 @@ func driversHandler(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				w.WriteHeader(http.StatusServiceUnavailable)
 				w.Write([]byte("503 - Database Unavailable"))
+				log.Print(err)
 				return
 			}
 			w.Write([]byte("200 - Account created"))
@@ -237,7 +241,7 @@ func driversHandler(w http.ResponseWriter, r *http.Request) {
 			reqBody, err := ioutil.ReadAll(r.Body)
 			// authorize user - obtain jwt details from auth microservice
 			id, isPassenger, errorStatusCode, errorText := getAuthDetails(r.Header.Get("Authorization"))
-			if (errorStatusCode != 0){
+			if errorStatusCode != 0 {
 				w.WriteHeader(errorStatusCode)
 				w.Write([]byte(errorText))
 				return
@@ -268,6 +272,7 @@ func driversHandler(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				w.WriteHeader(http.StatusServiceUnavailable)
 				w.Write([]byte("503 - Database Unavailable"))
+				log.Print(err)
 				return
 			}
 		}
@@ -275,7 +280,12 @@ func driversHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	db, err := sql.Open("mysql", "user:password@tcp("+os.Getenv("MYSQL_HOST")+")/ooper")
+	if os.Getenv("ENVIRONMENT") != "production" {
+		os.Setenv("MYSQL_HOST", "localhost:3306")
+		os.Setenv("DATABASE_NAME", "ooper")
+		os.Setenv("AUTH_MS_HOST", "http://localhost:5003")
+	}
+	db, err := sql.Open("mysql", "user:password@tcp("+os.Getenv("MYSQL_HOST")+")/"+os.Getenv("DATABASE_NAME"))
 
 	//  handle error
 	if err != nil {
@@ -294,7 +304,5 @@ func main() {
 	router.Use(mux.CORSMethodMiddleware(router))
 	fmt.Println("Driver Microservice")
 	fmt.Println("Listening at port 5001")
-	fmt.Println(os.Getenv("MYSQL_HOST"))
-	fmt.Println("HI")
 	log.Fatal(http.ListenAndServe(":5001", router))
 }

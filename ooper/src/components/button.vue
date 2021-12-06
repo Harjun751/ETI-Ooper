@@ -1,12 +1,12 @@
 <template>
   <div>
-    <button type="submit">{{ text }}</button>
+    <button type="submit" :disabled="disabled">{{ text }}</button>
   </div>
 </template>
 
 <script>
 export default {
-    props:["text"],
+    props:["text","disabled"],
     data(){
         return{
             clientX:0,
@@ -26,9 +26,14 @@ button{
     background:var(--bright-yellow);
     color:var(--purple);
     font-weight: bold;
-    transition: .1s background linear;
+    transition: all .1s linear;
 }
 button:hover{
   background:var(--dark-yellow);
+}
+button:disabled{
+  cursor:default;
+  background:var(--dark-yellow);
+  
 }
 </style>

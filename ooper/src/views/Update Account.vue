@@ -35,10 +35,10 @@ export default {
             var data = {"FirstName":this.firstName,"LastName":this.lastName,"MobileNumber":Number(this.mobileNumber),"Email":this.email}
             var url = ""
             if (this.isPassenger){
-                url = "http://localhost:5000/api/v1/passengers"
+                url = process.env.VUE_APP_PASSENGER_MS_HOST+"/api/v1/passengers"
             }
             else if (this.isPassenger == false){
-                url = "http://localhost:5001/api/v1/drivers"
+                url = process.env.VUE_APP_DRIVER_MS_HOST+"/api/v1/drivers"
                 data["LicenseNumber"] = this.license
             }
             await fetch(url,{

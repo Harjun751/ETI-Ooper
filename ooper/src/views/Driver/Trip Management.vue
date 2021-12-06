@@ -1,5 +1,6 @@
 <template>
-    <div v-if="exists">
+    <!-- <div v-if="exists"> -->
+    <div>
         <div id="map">
             <iframe
             width="680"
@@ -12,13 +13,24 @@
             <input v-model="origin" type="text" placeholder="start point" disabled/>
             <input v-model="destination" type="text" placeholder="end point" disabled/>
             <p>fee:<span id="value">{{ price }}</span></p>
-            <Button text="start trip" @click="startTrip"/>
-            <Button text="end trip" @click="endTrip"/>
+            <span v-if="start!=''">
+                <Button text="start trip" disabled="true" @click="startTrip"/>
+            </span>
+            <span v-else>
+                <Button text="start trip" @click="startTrip"/>
+            </span>
+            <br/>
+            <span v-if="start=='' || end!=''">
+                <Button text="end trip" disabled="true" @click="endTrip"/>
+            </span>
+            <span v-else>
+                <Button text="end trip" @click="endTrip"/>
+            </span>
         </div>
     </div>
-    <div v-if="exists==false">
+    <!-- <div v-if="exists==false">
         <h3 style="color:var(--bright-yellow);">No Trips!</h3>
-    </div>
+    </div> -->
 </template>
 
 <script>
@@ -30,20 +42,15 @@ export default {
         return{
             origin:"",
             destination:"",
-            price:"",
             start:"",
             end:"",
             tripID:"",
-            exists:null
-        }
-    },
-    computed:{
-        fullURL(){
-            return "https://www.google.com/maps/embed/v1/directions?key=" + process.env.VUE_APP_GMAPS_KEY + "&origin="+this.origin+"&destination="+this.destination
+            exists:null,
+            fullURL:""
         }
     },
     async mounted(){
-        await fetch("http://localhost:5004/api/v1/current-trip",{
+        await fetch(process.env.VUE_APP_TRIP_MS_HOST+"/api/v1/current-trip",{
         method:"GET",
         headers: {
             'Content-Type': 'application/json',
@@ -55,7 +62,7 @@ export default {
                 this.exists = false
                 throw "No data"
             }
-            await res.json()
+            return await res.json()
         })
         .then((data)=>{
             this.exists = true
@@ -64,25 +71,34 @@ export default {
             this.start = data.Start
             this.end = data.End
             this.tripID = data.ID
+            this.fullURL = "https://www.google.com/maps/embed/v1/directions?key=" + process.env.VUE_APP_GMAPS_KEY + "&origin="+this.origin+"&destination="+this.destination
         })
     },
     methods:{
         async startTrip(){
-            await fetch("http://localhost:5004/api/v1/trip/"+this.tripID+"/start",{
+            await fetch(process.env.VUE_APP_TRIP_MS_HOST+"/api/v1/trip/"+this.tripID+"/start",{
                 method:"POST",
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': "Bearer " +  store.state.jwtAccessToken
                 },
             })
+            .then(()=>{
+                var today = new Date();
+                this.start = today.getDate() + today.getTime()
+            })
         },
         async endTrip(){
-            await fetch("http://localhost:5004/api/v1/trip/"+this.tripID+"/end",{
+            await fetch(process.env.VUE_APP_TRIP_MS_HOST+"/api/v1/trip/"+this.tripID+"/end",{
                 method:"POST",
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': "Bearer " +  store.state.jwtAccessToken
                 },
+            })
+            .then(()=>{
+                var today = new Date();
+                this.end = today.getDate() + today.getTime()
             })
         },
     }

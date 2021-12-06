@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/golang-jwt/jwt"
 	"github.com/gorilla/mux"
@@ -53,9 +54,9 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		email := authenticationInfo["email"].(string)
 		var url string
 		if isPassenger {
-			url = "http://localhost:5000/api/v1/passengers?email=" + email
+			url = os.Getenv("PASSENGER_MS_HOST") + "/api/v1/passengers?email=" + email
 		} else if !isPassenger {
-			url = "http://localhost:5001/api/v1/drivers?email=" + email
+			url = os.Getenv("DRIVER_MS_HOST") + "/api/v1/drivers?email=" + email
 		}
 
 		var id int
@@ -74,6 +75,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		} else if err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			w.Write([]byte("503 - Endpoint Unavailable"))
+			log.Print(err)
 			return
 		}
 
@@ -108,7 +110,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func authHandler(w http.ResponseWriter, r *http.Request){
+func authHandler(w http.ResponseWriter, r *http.Request) {
 	// set CORS headers
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept")
@@ -138,7 +140,7 @@ func authHandler(w http.ResponseWriter, r *http.Request){
 
 			return secret, nil
 		})
-		if (err!=nil){
+		if err != nil {
 			w.WriteHeader(http.StatusForbidden)
 			w.Write([]byte("403 - Invalid Token"))
 			return
@@ -146,7 +148,7 @@ func authHandler(w http.ResponseWriter, r *http.Request){
 		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 			id := int(claims["id"].(float64))
 			isPassenger := claims["isPassenger"].(bool)
-			json.NewEncoder(w).Encode(map[string]interface{}{"ID":id,"isPassenger":isPassenger})
+			json.NewEncoder(w).Encode(map[string]interface{}{"ID": id, "isPassenger": isPassenger})
 		} else {
 			w.WriteHeader(http.StatusForbidden)
 			w.Write([]byte("403 - Invalid Token"))
@@ -155,8 +157,11 @@ func authHandler(w http.ResponseWriter, r *http.Request){
 	}
 }
 
-
 func main() {
+	if os.Getenv("ENVIRONMENT") != "production" {
+		os.Setenv("DRIVER_MS_HOST", "http://localhost:5001")
+		os.Setenv("PASSENGER_MS_HOST", "http://localhost:5000")
+	}
 	router := mux.NewRouter()
 	router.HandleFunc("/api/v1/login", loginHandler)
 	router.HandleFunc("/api/v1/authorize", authHandler)

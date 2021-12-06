@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/go-sql-driver/mysql"
 	_ "github.com/go-sql-driver/mysql"
@@ -27,7 +28,7 @@ type trip struct {
 
 var database *sql.DB
 
-func getAuthDetails(header string) (id int, isPassenger bool, errorStatusCode int, errorText string){
+func getAuthDetails(header string) (id int, isPassenger bool, errorStatusCode int, errorText string) {
 	errorStatusCode = 0
 	errorText = ""
 	newReqBody, err := json.Marshal(map[string]interface{}{"authorization": header})
@@ -37,9 +38,9 @@ func getAuthDetails(header string) (id int, isPassenger bool, errorStatusCode in
 		return
 	}
 	// POST to authentication microservice with details
-	resp, err := http.Post("http://localhost:5003/api/v1/authorize","application/json",bytes.NewBuffer(newReqBody))
+	resp, err := http.Post(os.Getenv("AUTH_MS_HOST")+"/api/v1/authorize", "application/json", bytes.NewBuffer(newReqBody))
 	if err == nil {
-		if (resp.StatusCode!=200){
+		if resp.StatusCode != 200 {
 			errorStatusCode = http.StatusUnprocessableEntity
 			errorText = "401 - Access Token Incorrect"
 			return
@@ -70,7 +71,7 @@ func startTripHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		// authenticate user
 		id, isPassenger, errorStatusCode, errorText := getAuthDetails(r.Header.Get("Authorization"))
-		if (errorStatusCode != 0){
+		if errorStatusCode != 0 {
 			w.WriteHeader(errorStatusCode)
 			w.Write([]byte(errorText))
 			return
@@ -127,7 +128,7 @@ func endTripHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		// authenticate user
 		id, isPassenger, errorStatusCode, errorText := getAuthDetails(r.Header.Get("Authorization"))
-		if (errorStatusCode != 0){
+		if errorStatusCode != 0 {
 			w.WriteHeader(errorStatusCode)
 			w.Write([]byte(errorText))
 			return
@@ -171,7 +172,7 @@ func endTripHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Update availability of driver
-		url := fmt.Sprintf("http://localhost:5001/api/v1/drivers/%d/availability", driver_id)
+		url := fmt.Sprintf(os.Getenv("DRIVER_MS_HOST")+"/api/v1/drivers/%d/availability", driver_id)
 		newReqBody, err := json.Marshal(map[string]interface{}{"availability": true})
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -203,7 +204,7 @@ func currentTripHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "GET" {
 		id, isPassenger, errorStatusCode, errorText := getAuthDetails(r.Header.Get("Authorization"))
-		if (errorStatusCode != 0){
+		if errorStatusCode != 0 {
 			w.WriteHeader(errorStatusCode)
 			w.Write([]byte(errorText))
 			return
@@ -236,7 +237,7 @@ func tripHandler(w http.ResponseWriter, r *http.Request) {
 	// authenticate user
 	// Both GET and POST require authentication so do it here
 	id, isPassenger, errorStatusCode, errorText := getAuthDetails(r.Header.Get("Authorization"))
-	if (errorStatusCode != 0){
+	if errorStatusCode != 0 {
 		w.WriteHeader(errorStatusCode)
 		w.Write([]byte(errorText))
 		return
@@ -294,7 +295,7 @@ func tripHandler(w http.ResponseWriter, r *http.Request) {
 			var last_name string
 			var license_number string
 			// Get available driver
-			resp, err := http.Get("http://localhost:5001/api/v1/drivers/available")
+			resp, err := http.Get(os.Getenv("DRIVER_MS_HOST") + "/api/v1/drivers/available")
 			if err == nil {
 				defer resp.Body.Close()
 				if body, err := ioutil.ReadAll(resp.Body); err == nil {
@@ -317,7 +318,7 @@ func tripHandler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// Update availability of driver
-			url := fmt.Sprintf("http://localhost:5001/api/v1/drivers/%d/availability", driver_id)
+			url := fmt.Sprintf(os.Getenv("DRIVER_MS_HOST")+"/api/v1/drivers/%d/availability", driver_id)
 			newReqBody, err := json.Marshal(map[string]interface{}{"availability": false})
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
@@ -341,7 +342,14 @@ func tripHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	db, err := sql.Open("mysql", "user:password@tcp(127.0.0.1:3306)/ooper")
+	if os.Getenv("ENVIRONMENT") != "production" {
+		os.Setenv("MYSQL_HOST", "localhost:3306")
+		os.Setenv("DATABASE_NAME", "ooper")
+		os.Setenv("AUTH_MS_HOST", "http://localhost:5003")
+		os.Setenv("DRIVER_MS_HOST", "http://localhost:5001")
+		fmt.Println("Using localhost:3306 as database host and ooper as database name")
+	}
+	db, err := sql.Open("mysql", "user:password@tcp("+os.Getenv("MYSQL_HOST")+")/"+os.Getenv("DATABASE_NAME"))
 	//  handle error
 	if err != nil {
 		panic(err.Error())

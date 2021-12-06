@@ -10,6 +10,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
@@ -27,7 +28,7 @@ type passenger struct {
 
 var database *sql.DB
 
-func getAuthDetails(header string) (id int, isPassenger bool, errorStatusCode int, errorText string){
+func getAuthDetails(header string) (id int, isPassenger bool, errorStatusCode int, errorText string) {
 	errorStatusCode = 0
 	errorText = ""
 	newReqBody, err := json.Marshal(map[string]interface{}{"authorization": header})
@@ -37,9 +38,9 @@ func getAuthDetails(header string) (id int, isPassenger bool, errorStatusCode in
 		return
 	}
 	// POST to authentication microservice with details
-	resp, err := http.Post("http://localhost:5003/api/v1/authorize","application/json",bytes.NewBuffer(newReqBody))
+	resp, err := http.Post(os.Getenv("AUTH_MS_HOST")+"/api/v1/authorize", "application/json", bytes.NewBuffer(newReqBody))
 	if err == nil {
-		if (resp.StatusCode!=200){
+		if resp.StatusCode != 200 {
 			errorStatusCode = http.StatusUnprocessableEntity
 			errorText = "401 - Access Token Incorrect"
 			return
@@ -103,6 +104,7 @@ func passengersHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			w.Write([]byte("503 - Database Unavailable"))
+			log.Print(err)
 			return
 		}
 		results.Next()
@@ -146,6 +148,7 @@ func passengersHandler(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				w.WriteHeader(http.StatusServiceUnavailable)
 				w.Write([]byte("503 - Database Unavailable"))
+				log.Print(err)
 				return
 			}
 			w.Write([]byte("200 - Account created"))
@@ -156,7 +159,7 @@ func passengersHandler(w http.ResponseWriter, r *http.Request) {
 			reqBody, err := ioutil.ReadAll(r.Body)
 			// authenticate user
 			id, isPassenger, errorStatusCode, errorText := getAuthDetails(r.Header.Get("Authorization"))
-			if (errorStatusCode != 0){
+			if errorStatusCode != 0 {
 				w.WriteHeader(errorStatusCode)
 				w.Write([]byte(errorText))
 				return
@@ -187,6 +190,7 @@ func passengersHandler(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				w.WriteHeader(http.StatusServiceUnavailable)
 				w.Write([]byte("503 - Database Unavailable"))
+				log.Print(err)
 				return
 			}
 		}
@@ -194,7 +198,12 @@ func passengersHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	db, err := sql.Open("mysql", "user:password@tcp(127.0.0.1:3306)/ooper")
+	if os.Getenv("ENVIRONMENT") != "production" {
+		os.Setenv("MYSQL_HOST", "localhost:3306")
+		os.Setenv("DATABASE_NAME", "ooper")
+		os.Setenv("AUTH_MS_HOST", "http://localhost:5003")
+	}
+	db, err := sql.Open("mysql", "user:password@tcp("+os.Getenv("MYSQL_HOST")+")/"+os.Getenv("DATABASE_NAME"))
 
 	//  handle error
 	if err != nil {
