@@ -32,10 +32,12 @@ type driver struct {
 
 var database *sql.DB
 
-func getAuthDetails(header string) (id int, isPassenger bool, errorStatusCode int, errorText string) {
+//General function to get authorization details from auth microservice
+// Returns error code and string if there's an issue, else returns details
+func getAuthDetails(jwt string) (id int, isPassenger bool, errorStatusCode int, errorText string) {
 	errorStatusCode = 0
 	errorText = ""
-	newReqBody, err := json.Marshal(map[string]interface{}{"authorization": header})
+	newReqBody, err := json.Marshal(map[string]interface{}{"authorization": jwt})
 	if err != nil {
 		errorStatusCode = http.StatusInternalServerError
 		errorText = "500 - Internal Error"
@@ -77,10 +79,10 @@ func saltNHash(password string) (string, string) {
 	return saltString, hashString
 }
 
+// Makes random bytes of length n
 func GenerateRandomBytes(n int) ([]byte, error) {
 	b := make([]byte, n)
 	_, err := rand.Read(b)
-	// Note that err == nil only if we read len(b) bytes.
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +90,8 @@ func GenerateRandomBytes(n int) ([]byte, error) {
 }
 
 func setAvailabilityDriver(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:8080")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization")
 
 	if r.Method == http.MethodOptions {
@@ -109,6 +112,8 @@ func setAvailabilityDriver(w http.ResponseWriter, r *http.Request) {
 		var bodyData map[string]interface{}
 		json.Unmarshal(reqBody, &bodyData)
 
+		// Get availability from body data
+		// Only availability is update-able
 		availability := bodyData["availability"].(bool)
 		ID, err := strconv.Atoi(id)
 		if err != nil {
@@ -116,6 +121,8 @@ func setAvailabilityDriver(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("400 - Malformed body"))
 			return
 		}
+
+		// Foramt database UPDATE query and send
 		query := fmt.Sprintf("UPDATE driver set available=%t where id=%d", availability, ID)
 		_, err = database.Query(query)
 		if err != nil {
@@ -129,7 +136,8 @@ func setAvailabilityDriver(w http.ResponseWriter, r *http.Request) {
 }
 
 func getAvailableDriver(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:5004")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization")
 
 	if r.Method == http.MethodOptions {
@@ -165,7 +173,8 @@ func getAvailableDriver(w http.ResponseWriter, r *http.Request) {
 }
 
 func driversHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:8080")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization")
 
 	if r.Method == http.MethodOptions {
@@ -240,7 +249,13 @@ func driversHandler(w http.ResponseWriter, r *http.Request) {
 			var newDriver driver
 			reqBody, err := ioutil.ReadAll(r.Body)
 			// authorize user - obtain jwt details from auth microservice
-			id, isPassenger, errorStatusCode, errorText := getAuthDetails(r.Header.Get("Authorization"))
+			jwt, err := r.Cookie("jwt")
+			if err != nil {
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte("401 - No authorized cookie"))
+				return
+			}
+			id, isPassenger, errorStatusCode, errorText := getAuthDetails(jwt.Value)
 			if errorStatusCode != 0 {
 				w.WriteHeader(errorStatusCode)
 				w.Write([]byte(errorText))

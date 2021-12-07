@@ -28,10 +28,10 @@ type passenger struct {
 
 var database *sql.DB
 
-func getAuthDetails(header string) (id int, isPassenger bool, errorStatusCode int, errorText string) {
+func getAuthDetails(jwt string) (id int, isPassenger bool, errorStatusCode int, errorText string) {
 	errorStatusCode = 0
 	errorText = ""
-	newReqBody, err := json.Marshal(map[string]interface{}{"authorization": header})
+	newReqBody, err := json.Marshal(map[string]interface{}{"authorization": jwt})
 	if err != nil {
 		errorStatusCode = http.StatusInternalServerError
 		errorText = "500 - Internal Error"
@@ -83,7 +83,8 @@ func GenerateRandomBytes(n int) ([]byte, error) {
 	return b, nil
 }
 func passengersHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:8080")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization")
 
 	if r.Method == http.MethodOptions {
@@ -157,8 +158,14 @@ func passengersHandler(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "PATCH" {
 			var newPassenger passenger
 			reqBody, err := ioutil.ReadAll(r.Body)
+			jwt, err := r.Cookie("jwt")
+			if err != nil {
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte("401 - No authorized cookie"))
+				return
+			}
 			// authenticate user
-			id, isPassenger, errorStatusCode, errorText := getAuthDetails(r.Header.Get("Authorization"))
+			id, isPassenger, errorStatusCode, errorText := getAuthDetails(jwt.Value)
 			if errorStatusCode != 0 {
 				w.WriteHeader(errorStatusCode)
 				w.Write([]byte(errorText))

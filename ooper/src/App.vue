@@ -10,12 +10,12 @@
     <router-link class="navigation" to="/new-trip">new trip</router-link>
     <router-link class="navigation" to="/view-trips">view trips</router-link>
     <router-link class="navigation" to="/update-account">update account</router-link>
-    <router-link class="navigation" to="/sign-out">sign out</router-link>
+    <a class="navigation" @click="signOut">sign out</a>
   </div>
   <div v-else-if="state.isPassenger==false" id="nav">
     <span>ooper</span>
     <router-link class="navigation" to="/trip-management">trip management</router-link>
-    <router-link class="navigation" to="/sign-out">sign out</router-link>
+    <a class="navigation" @click="signOut">sign out</a>
   </div>
   <router-view />
 </template>
@@ -27,7 +27,40 @@ export default {
         return{
             state:store.state,
         }
-    },    
+    },
+    methods:{
+      async signOut(){
+        await fetch(process.env.VUE_APP_AUTH_MS_HOST+"/api/v1/authorize",{
+            method:"DELETE",
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': "Bearer " +  store.state.jwtAccessToken
+            },
+            credentials:'include',
+            })
+            this.$router.push("login")
+      }
+    },
+    async mounted(){
+      await fetch(process.env.VUE_APP_AUTH_MS_HOST+"/api/v1/authorize",{
+        method:"GET",
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': "Bearer " +  store.state.jwtAccessToken
+        },
+        credentials:'include',
+        })
+        .then(async (res)=> await res.json())
+        .then((data)=>{
+            store.setIsPassenger(data.isPassenger)
+            if (data.isPassenger){
+              this.$router.push("/new-trip")
+            }
+            else{
+              this.$router.push("/trip-management")
+            }
+        })
+    }
 }
 </script>
 

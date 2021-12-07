@@ -39,6 +39,7 @@ export default {
                 headers: {
                     'Content-Type': 'application/json',
                 },
+                credentials:'include',
             })
             .then(async (res)=> {
                 if (res.status==403){
@@ -55,11 +56,11 @@ export default {
                         }
                     })
                 }
-                return await res.json()
+                return
             })
-            .then((data)=>{
-                store.setJWTAccessToken(data.token)
-                store.setIsPassenger(data.isPassenger)
+            .then(()=>{
+                // store.setJWTAccessToken(data.token)
+                store.setIsPassenger(this.isPassenger)
             })
             .then(()=>{
                 if (this.isPassenger){

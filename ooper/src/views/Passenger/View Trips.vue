@@ -27,6 +27,7 @@ async mounted(){
             'Content-Type': 'application/json',
             'Authorization': "Bearer " +  store.state.jwtAccessToken
         },
+        credentials:'include',
     })
     .then(async (res)=> await res.json())
     .then((data)=>{
@@ -55,7 +56,7 @@ async mounted(){
 <style scoped>
 .row{
     border-bottom:3px solid var(--bright-yellow);
-    margin:0 100px 0 100px;
+    margin:0 100px 30px 100px;
     text-align: left;
     color:var(--bright-yellow)
 }

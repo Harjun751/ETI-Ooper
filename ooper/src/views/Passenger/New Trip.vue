@@ -60,8 +60,26 @@ export default {
                     'Content-Type': 'application/json',
                     'Authorization': "Bearer " +  store.state.jwtAccessToken
                 },
+                credentials:'include',
             })
-            .then(async (res)=> await res.json())
+            .then(async (res)=> {
+                if (res.status==404){
+                    Swal.fire({
+                        title: 'failed...',
+                        text: 'no drivers available! try again soon...',
+                        icon: 'error',
+                        confirmButtonText: 'close',
+                        customClass:{
+                            popup: 'custom-swal-modal',
+                            icon: 'custom-swal-icon',
+                            content: 'custom-swal-content',
+                            confirmButton: 'custom-swal-button'
+                        }
+                    })
+                    return
+                }
+                return await res.json()
+            })
             .then((data)=>{
                 Swal.fire({
                     title: 'done!',

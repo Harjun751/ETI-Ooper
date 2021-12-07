@@ -28,10 +28,10 @@ type trip struct {
 
 var database *sql.DB
 
-func getAuthDetails(header string) (id int, isPassenger bool, errorStatusCode int, errorText string) {
+func getAuthDetails(jwt string) (id int, isPassenger bool, errorStatusCode int, errorText string) {
 	errorStatusCode = 0
 	errorText = ""
-	newReqBody, err := json.Marshal(map[string]interface{}{"authorization": header})
+	newReqBody, err := json.Marshal(map[string]interface{}{"authorization": jwt})
 	if err != nil {
 		errorStatusCode = http.StatusInternalServerError
 		errorText = "500 - Internal Error"
@@ -61,7 +61,8 @@ func getAuthDetails(header string) (id int, isPassenger bool, errorStatusCode in
 }
 
 func startTripHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:8080")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization")
 
 	if r.Method == http.MethodOptions {
@@ -69,8 +70,14 @@ func startTripHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == "POST" {
+		jwt, err := r.Cookie("jwt")
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("401 - No authorized cookie"))
+			return
+		}
 		// authenticate user
-		id, isPassenger, errorStatusCode, errorText := getAuthDetails(r.Header.Get("Authorization"))
+		id, isPassenger, errorStatusCode, errorText := getAuthDetails(jwt.Value)
 		if errorStatusCode != 0 {
 			w.WriteHeader(errorStatusCode)
 			w.Write([]byte(errorText))
@@ -118,7 +125,8 @@ func startTripHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 func endTripHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:8080")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization")
 
 	if r.Method == http.MethodOptions {
@@ -126,8 +134,14 @@ func endTripHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == "POST" {
+		jwt, err := r.Cookie("jwt")
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("401 - No authorized cookie"))
+			return
+		}
 		// authenticate user
-		id, isPassenger, errorStatusCode, errorText := getAuthDetails(r.Header.Get("Authorization"))
+		id, isPassenger, errorStatusCode, errorText := getAuthDetails(jwt.Value)
 		if errorStatusCode != 0 {
 			w.WriteHeader(errorStatusCode)
 			w.Write([]byte(errorText))
@@ -195,7 +209,8 @@ func endTripHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func currentTripHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:8080")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization")
 
 	if r.Method == http.MethodOptions {
@@ -203,7 +218,13 @@ func currentTripHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == "GET" {
-		id, isPassenger, errorStatusCode, errorText := getAuthDetails(r.Header.Get("Authorization"))
+		jwt, err := r.Cookie("jwt")
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("401 - No authorized cookie"))
+			return
+		}
+		id, isPassenger, errorStatusCode, errorText := getAuthDetails(jwt.Value)
 		if errorStatusCode != 0 {
 			w.WriteHeader(errorStatusCode)
 			w.Write([]byte(errorText))
@@ -217,7 +238,7 @@ func currentTripHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		results := database.QueryRow(query)
 		var trip trip
-		err := results.Scan(&trip.ID, &trip.PickUp, &trip.DropOff, &trip.PassengerID, &trip.DriverID, &trip.Requested, &trip.Start, &trip.End)
+		err = results.Scan(&trip.ID, &trip.PickUp, &trip.DropOff, &trip.PassengerID, &trip.DriverID, &trip.Requested, &trip.Start, &trip.End)
 		if err != nil {
 			w.WriteHeader(http.StatusNotFound)
 			w.Write([]byte("404 - No current trip"))
@@ -228,7 +249,8 @@ func currentTripHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func tripHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:8080")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization")
 
 	if r.Method == http.MethodOptions {
@@ -236,7 +258,13 @@ func tripHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// authenticate user
 	// Both GET and POST require authentication so do it here
-	id, isPassenger, errorStatusCode, errorText := getAuthDetails(r.Header.Get("Authorization"))
+	jwt, err := r.Cookie("jwt")
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte("401 - No authorized cookie"))
+		return
+	}
+	id, isPassenger, errorStatusCode, errorText := getAuthDetails(jwt.Value)
 	if errorStatusCode != 0 {
 		w.WriteHeader(errorStatusCode)
 		w.Write([]byte(errorText))
@@ -301,11 +329,20 @@ func tripHandler(w http.ResponseWriter, r *http.Request) {
 				if body, err := ioutil.ReadAll(resp.Body); err == nil {
 					var result map[string]interface{}
 					json.Unmarshal(body, &result)
+					if len(result) == 0 {
+						w.WriteHeader(http.StatusNotFound)
+						w.Write([]byte("404 - Unable to get driver"))
+						return
+					}
 					driver_id = int(result["ID"].(float64))
 					first_name = result["FirstName"].(string)
 					last_name = result["LastName"].(string)
 					license_number = result["LicenseNumber"].(string)
 				}
+			} else {
+				w.WriteHeader(http.StatusServiceUnavailable)
+				w.Write([]byte("503 - Endpoint Unavailable"))
+				return
 			}
 
 			query := fmt.Sprintf("INSERT INTO trip (pickup,dropoff,passenger_id,driver_id,requested) VALUES ('%s','%s',%d,%d,NOW())", trip.PickUp, trip.DropOff, id, driver_id)

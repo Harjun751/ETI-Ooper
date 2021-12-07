@@ -44,6 +44,7 @@ export default {
             await fetch(url,{
                 body: JSON.stringify(data),
                 method:"PATCH",
+                credentials: 'include',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': "Bearer " +  store.state.jwtAccessToken

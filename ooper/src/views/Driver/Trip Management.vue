@@ -1,6 +1,5 @@
 <template>
-    <!-- <div v-if="exists"> -->
-    <div>
+    <div v-if="exists">
         <div id="map">
             <iframe
             width="680"
@@ -13,14 +12,14 @@
             <input v-model="origin" type="text" placeholder="start point" disabled/>
             <input v-model="destination" type="text" placeholder="end point" disabled/>
             <p>fee:<span id="value">{{ price }}</span></p>
-            <span v-if="start!=''">
+            <span v-if="start!=false">
                 <Button text="start trip" disabled="true" @click="startTrip"/>
             </span>
             <span v-else>
                 <Button text="start trip" @click="startTrip"/>
             </span>
             <br/>
-            <span v-if="start=='' || end!=''">
+            <span v-if="start==false || end!=false">
                 <Button text="end trip" disabled="true" @click="endTrip"/>
             </span>
             <span v-else>
@@ -28,14 +27,15 @@
             </span>
         </div>
     </div>
-    <!-- <div v-if="exists==false">
+    <div v-if="exists==false">
         <h3 style="color:var(--bright-yellow);">No Trips!</h3>
-    </div> -->
+    </div>
 </template>
 
 <script>
 import Button from "../../components/button.vue"
 import { store } from "../../state"
+const Swal = require('sweetalert2')
 export default {
     components:{Button},
     data(){
@@ -56,6 +56,7 @@ export default {
             'Content-Type': 'application/json',
             'Authorization': "Bearer " +  store.state.jwtAccessToken
         },
+        credentials:'include',
         })
         .then(async (res)=>{
             if (res.status==404){
@@ -68,8 +69,8 @@ export default {
             this.exists = true
             this.origin = data.PickUp
             this.destination = data.DropOff
-            this.start = data.Start
-            this.end = data.End
+            this.start = data.Start.Valid
+            this.end = data.End.Valid
             this.tripID = data.ID
             this.fullURL = "https://www.google.com/maps/embed/v1/directions?key=" + process.env.VUE_APP_GMAPS_KEY + "&origin="+this.origin+"&destination="+this.destination
         })
@@ -82,6 +83,7 @@ export default {
                     'Content-Type': 'application/json',
                     'Authorization': "Bearer " +  store.state.jwtAccessToken
                 },
+                credentials:'include',
             })
             .then(()=>{
                 var today = new Date();
@@ -95,10 +97,24 @@ export default {
                     'Content-Type': 'application/json',
                     'Authorization': "Bearer " +  store.state.jwtAccessToken
                 },
+                credentials:'include',
             })
             .then(()=>{
                 var today = new Date();
                 this.end = today.getDate() + today.getTime()
+                this.exists = false
+                Swal.fire({
+                    title: 'finished trip!',
+                    text: "you finished this trip!",
+                    icon: 'success',
+                    confirmButtonText: 'close',
+                    customClass:{
+                        popup: 'custom-swal-modal',
+                        icon: 'custom-swal-icon',
+                        content: 'custom-swal-content',
+                        confirmButton: 'custom-swal-button'
+                    }
+                })
             })
         },
     }

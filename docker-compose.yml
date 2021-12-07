@@ -13,6 +13,7 @@ services:
     environment:
       DRIVER_MS_HOST: http://driver-microservice:5001
       PASSENGER_MS_HOST: http://passenger-microservice:5000
+      ENVIRONMENT: "production"
 
   passenger-microservice:
     build: "Passenger Account Microservice/"

@@ -1,5 +1,5 @@
 FROM node:12.18.1
-RUN npm install -g http-server
+RUN npm install -g http-server-spa
 WORKDIR /app
 
 # Add package json to  workdir
@@ -11,4 +11,4 @@ RUN npm install
 COPY . .
 RUN npm run build
 EXPOSE 8080
-CMD [ "http-server", "dist" ]
+CMD [ "http-server-spa", "dist" ]

@@ -11,8 +11,13 @@
             <svg width="30" height="30">
             <circle cx="15" cy="15" r="15" />
             </svg>
-            <p>Ride Started</p>
-            <span>{{item.Start}}</span>
+            <section v-if="item.Start.Valid==false">
+                <p>Ride not started</p>
+            </section>
+            <section v-else>
+                <p>Ride Started</p>
+                <span>{{item.Start}}</span>
+            </section>
         </div>
         <div class="grp">
             <svg version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="40px" x="0px" y="0px" viewBox="0 0 498.923 498.923" style="enable-background:new 0 0 498.923 498.923;" xml:space="preserve">
@@ -28,8 +33,13 @@
                 </g>
             </g>
             </svg>
-            <p>Ride Ended</p>
-            <span>{{item.End}}</span>
+            <section v-if="item.End.Valid==false">
+                <p>Ride not ended</p>
+            </section>
+            <section v-else>
+                <p>Ride Ended</p>
+                <span>{{item.End}}</span>
+            </section>
         </div>
     </div>
 </div>
