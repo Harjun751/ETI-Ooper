@@ -1,13 +1,13 @@
 <template>
   <div id="map">
-      <iframe
-    width="680"
-    height="600"
-    frameborder="0" style="border:3px solid var(--bright-yellow);border-radius:50px;"
-    :src="fullURL" allowfullscreen>
-    </iframe>
+    <div v-if="mapskey!=nil">
+        <iframe
+        frameborder="0"
+        :src="fullURL" allowfullscreen>
+        </iframe>
+    </div>
   </div>
-  <div id="form">
+  <div id="form" :class="{ center: mapskey==nil }">
     <input v-model="origin" type="text" placeholder="start point"/>
     <input v-model="destination" type="text" placeholder="end point"/>
     <p>fee:<span id="value">{{ price }}</span></p>
@@ -25,7 +25,8 @@ export default {
         return{
             origin:"",
             destination:"",
-            price:""
+            price:"",
+            mapskey:process.env.VUE_APP_GMAPS_KEY
         }
     },
     computed:{
@@ -110,6 +111,12 @@ export default {
     text-align: left;
     margin-bottom:50px;
 }
+#form.center{
+    margin-left:auto;
+    margin-right:auto;
+    display:inline-block;
+    float:none;
+}
 #value{
     padding-left:10px;
     text-decoration: underline;
@@ -121,5 +128,23 @@ export default {
 }
 input{
     width:700px;
+}
+iframe{
+    border:3px solid var(--bright-yellow);
+    border-radius:50px;
+    width:680px;
+    height:600px;
+}
+@media screen and (max-width: 1440px) {
+  #map{
+    margin-left:30px;
+  }
+  iframe{
+    width:580px;
+    height:500px;
+  }
+  input{
+    width:500px;
+  }
 }
 </style>

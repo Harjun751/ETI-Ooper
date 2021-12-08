@@ -107,4 +107,10 @@ input:last-of-type{
     margin-top:200px;
     margin-left:80px;
 }
+
+@media screen and (max-width: 1440px) {
+  #images{
+    margin-left:20px;
+  }
+}
 </style>

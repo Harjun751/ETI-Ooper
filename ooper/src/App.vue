@@ -84,6 +84,14 @@ export default {
   justify-content: center;
   align-items: center;
 }
+@media screen and (max-width: 1440px) {
+  #nav{
+    font-size:30px;
+  }
+  #nav a{
+    margin-right:90px !important;
+  }
+}
 #nav span{
   font-size: 54px;
   padding:0;

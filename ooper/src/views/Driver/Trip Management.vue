@@ -11,7 +11,6 @@
         <div id="form">
             <input v-model="origin" type="text" placeholder="start point" disabled/>
             <input v-model="destination" type="text" placeholder="end point" disabled/>
-            <p>fee:<span id="value">{{ price }}</span></p>
             <span v-if="start!=false">
                 <Button text="start trip" disabled="true" @click="startTrip"/>
             </span>
@@ -143,5 +142,17 @@ export default {
 }
 input{
     width:700px;
+}
+@media screen and (max-width: 1440px) {
+  #map{
+    margin-left:30px;
+  }
+  iframe{
+    width:580px;
+    height:500px;
+  }
+  input{
+    width:500px;
+  }
 }
 </style>

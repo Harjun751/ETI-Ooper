@@ -2,9 +2,9 @@
 <div @click="hidden = !hidden">
   <span id="pointer" :class="{ rotate:!hidden }">></span>&nbsp;
     <span>{{item.Requested}}</span>
-    <span class="origin">{{item.PickUp}}</span>
-    &nbsp;<span>-</span>&nbsp;
-    <span>{{item.DropOff}}</span>
+    <div class="details_container">
+        {{item.PickUp}}&nbsp;<span>-</span>&nbsp;{{item.DropOff}}
+    </div>
     <span class="time">{{item.Time}}</span>
     <div class="hidden" :class="{ hide: hidden, show: !hidden }">
         <div class="grp">
@@ -71,18 +71,26 @@ div{
 .time{
     float:right;
 }
-.origin{
-    margin-left:100px;
-}
 .hidden{
     transition: height 0.1s;
     overflow: hidden;
 }
 .hidden.show{
-    height:183px;
+    height:200px;
 }
 .hidden.hide{
     height:0px;
+}
+.details_container{
+    margin-left:100px;
+    max-width:500px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display:inline-block;
+}
+section{
+    width:98vw;
 }
 .grp{
     display:grid;
