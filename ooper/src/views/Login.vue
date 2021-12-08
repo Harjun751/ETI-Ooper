@@ -55,8 +55,8 @@ export default {
                             confirmButton: 'custom-swal-button'
                         }
                     })
+                    throw("failed")
                 }
-                return
             })
             .then(()=>{
                 // store.setJWTAccessToken(data.token)

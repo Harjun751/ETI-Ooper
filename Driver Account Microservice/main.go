@@ -11,7 +11,6 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
-	"strconv"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
@@ -89,89 +88,6 @@ func GenerateRandomBytes(n int) ([]byte, error) {
 	return b, nil
 }
 
-func setAvailabilityDriver(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:8080")
-	w.Header().Set("Access-Control-Allow-Credentials", "true")
-	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization")
-
-	if r.Method == http.MethodOptions {
-		return
-	}
-
-	if r.Method == "PATCH" {
-		params := mux.Vars(r)
-		id := params["ID"]
-
-		reqBody, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			w.WriteHeader(http.StatusUnprocessableEntity)
-			w.Write([]byte("422 - Please supply course information in JSON format"))
-			return
-		}
-
-		var bodyData map[string]interface{}
-		json.Unmarshal(reqBody, &bodyData)
-
-		// Get availability from body data
-		// Only availability is update-able
-		availability := bodyData["availability"].(bool)
-		ID, err := strconv.Atoi(id)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("400 - Malformed body"))
-			return
-		}
-
-		// Foramt database UPDATE query and send
-		query := fmt.Sprintf("UPDATE driver set available=%t where id=%d", availability, ID)
-		_, err = database.Query(query)
-		if err != nil {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			w.Write([]byte("503 - Database Unavailable"))
-			log.Print(err)
-			return
-		}
-		w.Write([]byte("200 - Updated"))
-	}
-}
-
-func getAvailableDriver(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:5004")
-	w.Header().Set("Access-Control-Allow-Credentials", "true")
-	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization")
-
-	if r.Method == http.MethodOptions {
-		return
-	}
-
-	if r.Method == "GET" {
-		results, err := database.Query("select id,first_name,last_name,license_number from driver where available=true limit 1;")
-		if err != nil {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			w.Write([]byte("503 - Database Unavailable"))
-			log.Print(err)
-			return
-		}
-		res := results.Next()
-		if !res {
-			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte("404 - No data"))
-			return
-		}
-		var id int
-		var firstName string
-		var lastName string
-		var licenseNumber string
-		err = results.Scan(&id, &firstName, &lastName, &licenseNumber)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("500 - Internal Error"))
-			return
-		}
-		json.NewEncoder(w).Encode(map[string]interface{}{"ID": id, "FirstName": firstName, "LastName": lastName, "LicenseNumber": licenseNumber})
-	}
-}
-
 func driversHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:8080")
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
@@ -183,15 +99,43 @@ func driversHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "GET" {
 		kv := r.URL.Query()
+		if kv.Get("available")=="true"{
+			// Obtain available driver onlys
+			results, err := database.Query("select id,first_name,last_name,license_number from driver where available=true limit 1;")
+			if err != nil {
+				w.WriteHeader(http.StatusServiceUnavailable)
+				w.Write([]byte("503 - Database Unavailable"))
+				log.Print(err)
+				return
+			}
+			res := results.Next()
+			if !res {
+				w.WriteHeader(http.StatusNotFound)
+				w.Write([]byte("404 - No data"))
+				return
+			}
+			var id int
+			var firstName string
+			var lastName string
+			var licenseNumber string
+			err = results.Scan(&id, &firstName, &lastName, &licenseNumber)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte("500 - Internal Error"))
+				return
+			}
+			json.NewEncoder(w).Encode(map[string]interface{}{"ID": id, "FirstName": firstName, "LastName": lastName, "LicenseNumber": licenseNumber})
+			return
+		}
 		id := kv["id"]
 		email := kv["email"]
-		var query string
+		var results *sql.Rows
+		var err error
 		if id != nil {
-			query = fmt.Sprintf("select * from driver where ID=%s", id[0])
+			results, err = database.Query("select * from driver where ID=?", id[0])
 		} else if email != nil {
-			query = fmt.Sprintf("select * from driver where email='%s'", email[0])
+			results, err = database.Query("select * from driver where email=?", email[0])
 		}
-		results, err := database.Query(query)
 		if err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			w.Write([]byte("503 - Database Unavailable"))
@@ -234,8 +178,7 @@ func driversHandler(w http.ResponseWriter, r *http.Request) {
 			// get salt and hash of password
 			salt, hash := saltNHash(newDriver.Password)
 
-			query := fmt.Sprintf("INSERT INTO driver (first_name,last_name,mobile_number,email,ic_number,license_number,password,salt) VALUES ('%s', '%s', %d, '%s', '%s', '%s','%s','%s')", newDriver.FirstName, newDriver.LastName, newDriver.MobileNumber, newDriver.Email, newDriver.ICNumber, newDriver.LicenseNumber, hash, salt)
-			_, err = database.Query(query)
+			_, err = database.Query("INSERT INTO driver (first_name,last_name,mobile_number,email,ic_number,license_number,password,salt) VALUES (?, ?, ?, ?, ?, ?,?,?)", newDriver.FirstName, newDriver.LastName, newDriver.MobileNumber, newDriver.Email, newDriver.ICNumber, newDriver.LicenseNumber, hash, salt)
 			if err != nil {
 				w.WriteHeader(http.StatusServiceUnavailable)
 				w.Write([]byte("503 - Database Unavailable"))
@@ -246,6 +189,34 @@ func driversHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if r.Method == "PATCH" {
+			kv := r.URL.Query()
+			if kv.Get("availability")=="true"{
+				// Only update availability of the driver
+				reqBody, err := ioutil.ReadAll(r.Body)
+				if err != nil {
+					w.WriteHeader(http.StatusUnprocessableEntity)
+					w.Write([]byte("422 - Please supply course information in JSON format"))
+					return
+				}
+
+				var bodyData map[string]interface{}
+				json.Unmarshal(reqBody, &bodyData)
+
+				// Get availability from body data
+				// Only availability is update-able
+				availability := bodyData["availability"].(bool)
+				ID := bodyData["ID"]
+				// Foramt database UPDATE query and send
+				_, err = database.Query("UPDATE driver set available=? where id=?", availability, ID)
+				if err != nil {
+					w.WriteHeader(http.StatusServiceUnavailable)
+					w.Write([]byte("503 - Database Unavailable"))
+					log.Print(err)
+					return
+				}
+				w.Write([]byte("200 - Updated"))
+				return
+			}
 			var newDriver driver
 			reqBody, err := ioutil.ReadAll(r.Body)
 			// authorize user - obtain jwt details from auth microservice
@@ -282,8 +253,7 @@ func driversHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			query := fmt.Sprintf("UPDATE driver SET first_name='%s',last_name='%s',mobile_number=%d,email='%s',license_number='%s' WHERE ID=%d;", newDriver.FirstName, newDriver.LastName, newDriver.MobileNumber, newDriver.Email, newDriver.LicenseNumber, id)
-			_, err = database.Query(query)
+			_, err = database.Query("UPDATE driver SET first_name=?,last_name=?,mobile_number=?,email=?,license_number=? WHERE ID=?;", newDriver.FirstName, newDriver.LastName, newDriver.MobileNumber, newDriver.Email, newDriver.LicenseNumber, id)
 			if err != nil {
 				w.WriteHeader(http.StatusServiceUnavailable)
 				w.Write([]byte("503 - Database Unavailable"))
@@ -314,8 +284,6 @@ func main() {
 	router := mux.NewRouter()
 
 	router.HandleFunc("/api/v1/drivers", driversHandler).Methods(http.MethodPatch, http.MethodPost, http.MethodOptions, http.MethodGet)
-	router.HandleFunc("/api/v1/drivers/available", getAvailableDriver).Methods(http.MethodGet)
-	router.HandleFunc("/api/v1/drivers/{ID}/availability", setAvailabilityDriver).Methods(http.MethodPatch)
 	router.Use(mux.CORSMethodMiddleware(router))
 	fmt.Println("Driver Microservice")
 	fmt.Println("Listening at port 5001")

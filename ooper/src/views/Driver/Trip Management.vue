@@ -49,7 +49,7 @@ export default {
         }
     },
     async mounted(){
-        await fetch(process.env.VUE_APP_TRIP_MS_HOST+"/api/v1/current-trip",{
+        await fetch(process.env.VUE_APP_TRIP_MS_HOST+"/api/v1/trips?current=true",{
         method:"GET",
         headers: {
             'Content-Type': 'application/json',
@@ -76,13 +76,15 @@ export default {
     },
     methods:{
         async startTrip(){
-            await fetch(process.env.VUE_APP_TRIP_MS_HOST+"/api/v1/trip/"+this.tripID+"/start",{
-                method:"POST",
+            var data = {"ID":this.tripID}
+            await fetch(process.env.VUE_APP_TRIP_MS_HOST+"/api/v1/trips?start=true",{
+                method:"PATCH",
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': "Bearer " +  store.state.jwtAccessToken
                 },
                 credentials:'include',
+                body: JSON.stringify(data)
             })
             .then(()=>{
                 var today = new Date();
@@ -90,13 +92,15 @@ export default {
             })
         },
         async endTrip(){
-            await fetch(process.env.VUE_APP_TRIP_MS_HOST+"/api/v1/trip/"+this.tripID+"/end",{
-                method:"POST",
+            var data = {"ID":this.tripID}
+            await fetch(process.env.VUE_APP_TRIP_MS_HOST+"/api/v1/trips?end=true",{
+                method:"PATCH",
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': "Bearer " +  store.state.jwtAccessToken
                 },
                 credentials:'include',
+                body: JSON.stringify(data)
             })
             .then(()=>{
                 var today = new Date();

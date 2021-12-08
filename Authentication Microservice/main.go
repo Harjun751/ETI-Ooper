@@ -73,6 +73,11 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			if body, err := ioutil.ReadAll(resp.Body); err == nil {
 				var result map[string]interface{}
 				json.Unmarshal(body, &result)
+				if (len(result)==0){
+					w.WriteHeader(http.StatusForbidden)
+					w.Write([]byte("403 - Authentication failed"))
+					return
+				}
 				id = int(result["ID"].(float64))
 				salt = result["Salt"].(string)
 				passHash = result["Password"].(string)
