@@ -84,7 +84,7 @@ export default {
             .then((data)=>{
                 Swal.fire({
                     title: 'done!',
-                    text: "Your driver is " + data.FirstName + " " + data.LastName + "\nLicense Number: " + data.LicenseNumber,
+                    html: "your driver is <b>" + data.FirstName + " " + data.LastName + "</b><br/>license Number: <b>" + data.LicenseNumber  + "</b>",
                     icon: 'success',
                     confirmButtonText: 'close',
                     customClass:{
@@ -134,6 +134,9 @@ iframe{
     border-radius:50px;
     width:680px;
     height:600px;
+}
+b{
+    font-weight: bold;
 }
 @media screen and (max-width: 1440px) {
   #map{

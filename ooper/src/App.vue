@@ -1,7 +1,6 @@
 <template>
   <div v-if="state.isPassenger==null" id="nav">
     <span>ooper</span>
-    <router-link class="navigation" to="/">home</router-link>
     <router-link class="navigation" to="/login">login</router-link>
     <router-link class="navigation" to="/sign-up">sign up</router-link>
   </div>
@@ -15,6 +14,7 @@
   <div v-else-if="state.isPassenger==false" id="nav">
     <span>ooper</span>
     <router-link class="navigation" to="/trip-management">trip management</router-link>
+    <router-link class="navigation" to="/update-account">update account</router-link>
     <a class="navigation" @click="signOut">sign out</a>
   </div>
   <router-view />
@@ -38,6 +38,7 @@ export default {
             },
             credentials:'include',
             })
+            store.setIsPassenger(null);
             this.$router.push("login")
       }
     },
@@ -103,6 +104,7 @@ export default {
 #nav a {
   color: var(--dark-yellow);
   margin-right:165px;
+  cursor:pointer;
 }
 #nav a:last-of-type{
   margin-right:auto;

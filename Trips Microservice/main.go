@@ -272,7 +272,7 @@ func tripHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == "GET" {
-		query := fmt.Sprintf("select * from trip where passenger_id=%d", id)
+		query := fmt.Sprintf("select * from trip where passenger_id=%d order by requested desc", id)
 		results, err := database.Query(query)
 		if err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)

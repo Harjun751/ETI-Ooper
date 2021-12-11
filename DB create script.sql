@@ -1,3 +1,4 @@
+create database ooper;
 use ooper;
 
 create table passenger

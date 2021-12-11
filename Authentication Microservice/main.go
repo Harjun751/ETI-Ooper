@@ -54,6 +54,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("500 - Internal Error"))
 			return
 		}
+		// Get isPassenger and email from body and cast into proper type
 		isPassenger := authenticationInfo["isPassenger"].(bool)
 		email := authenticationInfo["email"].(string)
 		var url string
@@ -63,7 +64,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			url = os.Getenv("DRIVER_MS_HOST") + "/api/v1/drivers?email=" + email
 		}
 
-		// Obtain data from passenger/driver microservice
+		// Obtain data for login from passenger/driver microservice
 		var id int
 		var salt string
 		var passHash string
@@ -73,6 +74,11 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			if body, err := ioutil.ReadAll(resp.Body); err == nil {
 				var result map[string]interface{}
 				json.Unmarshal(body, &result)
+				if len(result) == 0 {
+					w.WriteHeader(http.StatusForbidden)
+					w.Write([]byte("403 - Authentication failed"))
+					return
+				}
 				id = int(result["ID"].(float64))
 				salt = result["Salt"].(string)
 				passHash = result["Password"].(string)
@@ -84,6 +90,9 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// Get password from body and type assert to string
+		password := authenticationInfo["password"].(string)
+
 		// Convert salt from hex string to byte array
 		decodedSalt, err := hex.DecodeString(salt)
 		if err != nil {
@@ -91,8 +100,6 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("500 - Internal Error"))
 			return
 		}
-		// Type assert password into string
-		password := authenticationInfo["password"].(string)
 		// Add salt to user-inputted password
 		saltedPassword := append([]byte(password), decodedSalt...)
 
@@ -103,32 +110,26 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("403 - Authentication failed"))
 			return
 		}
+		// Generate JWT from details
 		token := genJWT(id, email, isPassenger)
-		// w.Header().Set("Content-Type", "application/json")
-		// response := map[string]interface{}{"token": token, "isPassenger": isPassenger}
-		// // Encode map to json string
-		// jsonResp, err := json.Marshal(response)
-		// if err != nil {
-		// 	w.WriteHeader(http.StatusInternalServerError)
-		// 	w.Write([]byte("500 - Internal Error"))
-		// 	return
-		// }
-		// w.Write(jsonResp)
+		// Create a cookie containing the JWT
 		cookie := &http.Cookie{Name: "jwt", Value: token, MaxAge: 500000, Path: "/", SameSite: http.SameSiteStrictMode, HttpOnly: true}
+		// Set cookie in response header
 		http.SetCookie(w, cookie)
 		w.WriteHeader(200)
 		return
 	}
 }
 
-// Decodes the JWT and sends back info
-// For other microservices to decide if user is allowed to do action
+// For authorization
 func authHandler(w http.ResponseWriter, r *http.Request) {
 	// set CORS headers
 	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:8080")
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization")
 	if r.Method == "POST" {
+		// Other microservices will POST jwt data passed to them to this endpoint
+		// to ensure that they are authorized  to perform the action
 		reqBody, err := ioutil.ReadAll(r.Body)
 
 		if err != nil {
@@ -145,6 +146,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// Get the JWT from the map
 		accessToken := authorizeInfo["authorization"].(string)
 		// Decode the jwt and ensure it's readable
 		token, err := jwt.Parse(accessToken, func(token *jwt.Token) (interface{}, error) {
@@ -171,13 +173,16 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
 	if r.Method == "GET" {
+		// This method is solely for frontend to check if user is logged in
 		accessToken, err := r.Cookie("jwt")
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte("401 - No authorized cookie"))
 			return
 		}
+		// Pass token token from cookie and ensure that the jwt is readable
 		token, err := jwt.Parse(accessToken.Value, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -206,6 +211,8 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 	// Think should create new endpoint?
 	// Method removes cookie from client
 	if r.Method == "DELETE" {
+		// Sets response header to delete cookie from browser
+		// For signing out of the website
 		cookie := &http.Cookie{Name: "jwt", Value: "", MaxAge: 0, Path: "/", SameSite: http.SameSiteStrictMode, HttpOnly: true}
 		http.SetCookie(w, cookie)
 		w.WriteHeader(200)

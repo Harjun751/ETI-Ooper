@@ -56,7 +56,7 @@ export default {
 }
 </script>
 
-<style>
+<style scoped>
 div{
     cursor:pointer;
     /* Prevent text selection */
@@ -118,9 +118,6 @@ section{
     grid-area:1 1 2 2;
     position:relative;
     top:20px;
-}
-svg path{
-    fill: var(--bright-yellow);
 }
 
 #pointer{

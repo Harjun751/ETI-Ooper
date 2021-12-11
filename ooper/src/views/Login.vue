@@ -32,6 +32,21 @@ export default {
             this.isPassenger = passenger
         },
         async login(){
+            if (this.email==null || this.password==null || this.email == "" || this.password == ""){
+                Swal.fire({
+                    title: 'failed...',
+                    text: 'please fill in all fields',
+                    icon: 'warning',
+                    confirmButtonText: 'close',
+                    customClass:{
+                        popup: 'custom-swal-modal',
+                        icon: 'custom-swal-icon',
+                        content: 'custom-swal-content',
+                        confirmButton: 'custom-swal-button'
+                    }
+                })
+                return
+            }
             var data = {"email":this.email,"password":this.password,"isPassenger":this.isPassenger}
             await fetch(process.env.VUE_APP_AUTH_MS_HOST+"/api/v1/login",{
                 body: JSON.stringify(data),
@@ -55,6 +70,7 @@ export default {
                             confirmButton: 'custom-swal-button'
                         }
                     })
+                    throw("auth failed")
                 }
                 return
             })
@@ -69,20 +85,6 @@ export default {
                 else if (!this.isPassenger){
                     this.$router.push("trip-management")
                 }
-            })
-            .catch(()=>{
-                Swal.fire({
-                    title: 'failed...',
-                    text: 'failed to login due to server issues',
-                    icon: 'error',
-                    confirmButtonText: 'close',
-                    customClass:{
-                        popup: 'custom-swal-modal',
-                        icon: 'custom-swal-icon',
-                        content: 'custom-swal-content',
-                        confirmButton: 'custom-swal-button'
-                    }
-                })
             })
         }
     },
