@@ -7,14 +7,10 @@ Ooper is a ride sharing platform created for an assignment. It utilizes a micros
 | Microservice   | Endpoint                          | Methods          | Description                                                                      |
 | -------------- | --------------------------------- | ---------------- | -------------------------------------------------------------------------------- |
 | Authentication | /api/v1/login                     | POST             | Authenticates user using hashing and salting, and returns a JWT                  |
+| Authorization  | /api/v1/authorize | POST, GET, DELETE | Decodes JWT and returns isPassenger and ID. POST takes JWT from body, while GET takes JWT from cookies. DELETE removes the jwt cookie.|
 | Driver         | /api/v1/drivers                   | PATCH, POST, GET | Creates a new driver object, Gets a driver, or updates a driver                  |
-| Driver         | /api/v1/drivers/available         | GET              | Obtains an available driver (for a trip)                                         |
-| Driver         | /api/v1/drivers/{ID}/availability | PATCH            | Updates specifically the availability of a driver                                |
 | Passenger      | /api/v1/passengers                | PATCH, POST, GET | Creates a new passenger object, Gets a passenger, or updates a passenger         |
-| Trip           | /api/v1/trips                     | POST, GET        | Obtains all trips for a passenger, or creates a new trip with an assigned driver |
-| Trip           | /api/v1/current-trip              | GET              | Obtains the current trip for a driver (or passenger)                             |
-| Trip           | /api/v1/trip/{ID}/start           | POST             | Sets the "start" attribute for a trip to the server's current time               |
-| Trip           | /api/v1/trip/{ID}/end             | POST             | Sets the "end" attribute for a trip to the server's current time                 |
+| Trip           | /api/v1/trips                     | PATCH, POST, GET | Obtains all trips for a passenger, or creates a new trip with an assigned driver |
 
 _Most endpoints also accept the OPTIONS method for CORS requests_
 

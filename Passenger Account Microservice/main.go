@@ -95,13 +95,13 @@ func passengersHandler(w http.ResponseWriter, r *http.Request) {
 		kv := r.URL.Query()
 		id := kv["id"]
 		email := kv["email"]
-		var query string
+		var results *sql.Rows
+		var err error
 		if id != nil {
-			query = fmt.Sprintf("select * from passenger where ID=%s", id[0])
+			results, err = database.Query("select * from passenger where ID=?", id[0])
 		} else if email != nil {
-			query = fmt.Sprintf("select * from passenger where email='%s'", email[0])
+			results, err = database.Query("select * from passenger where email=?", email[0])
 		}
-		results, err := database.Query(query)
 		if err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			w.Write([]byte("503 - Database Unavailable"))
@@ -144,8 +144,7 @@ func passengersHandler(w http.ResponseWriter, r *http.Request) {
 			// get salt and hash of password
 			salt, hash := saltNHash(newPassenger.Password)
 
-			query := fmt.Sprintf("INSERT INTO passenger (first_name,last_name,mobile_number,email,password,salt) VALUES ('%s', '%s', %d, '%s', '%s', '%s')", newPassenger.FirstName, newPassenger.LastName, newPassenger.MobileNumber, newPassenger.Email, hash, salt)
-			_, err = database.Query(query)
+			_, err = database.Query("INSERT INTO passenger (first_name,last_name,mobile_number,email,password,salt) VALUES (?, ?, ?, ?, ?, ?)", newPassenger.FirstName, newPassenger.LastName, newPassenger.MobileNumber, newPassenger.Email, hash, salt)
 			if err != nil {
 				w.WriteHeader(http.StatusServiceUnavailable)
 				w.Write([]byte("503 - Database Unavailable"))
@@ -192,8 +191,7 @@ func passengersHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			query := fmt.Sprintf("UPDATE passenger SET first_name='%s',last_name='%s',mobile_number=%d,email='%s' WHERE ID=%d;", newPassenger.FirstName, newPassenger.LastName, newPassenger.MobileNumber, newPassenger.Email, id)
-			_, err = database.Query(query)
+			_, err = database.Query("UPDATE passenger SET first_name=?,last_name=?,mobile_number=?,email=? WHERE ID=?;", newPassenger.FirstName, newPassenger.LastName, newPassenger.MobileNumber, newPassenger.Email, id)
 			if err != nil {
 				w.WriteHeader(http.StatusServiceUnavailable)
 				w.Write([]byte("503 - Database Unavailable"))

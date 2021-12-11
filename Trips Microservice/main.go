@@ -60,194 +60,6 @@ func getAuthDetails(jwt string) (id int, isPassenger bool, errorStatusCode int, 
 	return
 }
 
-func startTripHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:8080")
-	w.Header().Set("Access-Control-Allow-Credentials", "true")
-	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization")
-
-	if r.Method == http.MethodOptions {
-		return
-	}
-
-	if r.Method == "POST" {
-		jwt, err := r.Cookie("jwt")
-		if err != nil {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte("401 - No authorized cookie"))
-			return
-		}
-		// authenticate user
-		id, isPassenger, errorStatusCode, errorText := getAuthDetails(jwt.Value)
-		if errorStatusCode != 0 {
-			w.WriteHeader(errorStatusCode)
-			w.Write([]byte(errorText))
-			return
-		}
-		// Only drivers can update
-		if isPassenger {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte("401 - Not authorized for action"))
-			return
-		}
-
-		params := mux.Vars(r)
-		tripID := params["ID"]
-		var driver_id int
-
-		// GET trip
-		query := fmt.Sprintf("select driver_id from trip where id=" + tripID)
-		results, err := database.Query(query)
-		if err != nil {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			w.Write([]byte("503 - Database Unavailable"))
-			return
-		}
-		results.Next()
-		err = results.Scan(&driver_id)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("500 - Internal Error"))
-			return
-		}
-		if driver_id != id {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte("401 - Unauthorized to perform action"))
-			return
-		}
-		_, err = database.Query("UPDATE trip SET start=NOW() where id=" + tripID)
-		if err != nil {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			w.Write([]byte("503 - Database Unavailable"))
-			return
-		}
-		w.Write([]byte("200 - Trip updated"))
-	}
-
-}
-func endTripHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:8080")
-	w.Header().Set("Access-Control-Allow-Credentials", "true")
-	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization")
-
-	if r.Method == http.MethodOptions {
-		return
-	}
-
-	if r.Method == "POST" {
-		jwt, err := r.Cookie("jwt")
-		if err != nil {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte("401 - No authorized cookie"))
-			return
-		}
-		// authenticate user
-		id, isPassenger, errorStatusCode, errorText := getAuthDetails(jwt.Value)
-		if errorStatusCode != 0 {
-			w.WriteHeader(errorStatusCode)
-			w.Write([]byte(errorText))
-			return
-		}
-		// Only drivers can update
-		if isPassenger {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte("401 - Unauthorized to perform action"))
-			return
-		}
-
-		params := mux.Vars(r)
-		tripID := params["ID"]
-		var driver_id int
-
-		// GET trip
-		query := fmt.Sprintf("select driver_id from trip where id=" + tripID)
-		results, err := database.Query(query)
-		if err != nil {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			w.Write([]byte("503 - Database Unavailable"))
-			return
-		}
-		results.Next()
-		err = results.Scan(&driver_id)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("500 - Internal Error"))
-			return
-		}
-		if driver_id != id {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte("401 - Unauthorized to perform action"))
-			return
-		}
-		_, err = database.Query("UPDATE trip SET end=NOW() where id=" + tripID)
-		if err != nil {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			w.Write([]byte("503 - Database Unavailable"))
-			return
-		}
-
-		// Update availability of driver
-		url := fmt.Sprintf(os.Getenv("DRIVER_MS_HOST")+"/api/v1/drivers/%d/availability", driver_id)
-		newReqBody, err := json.Marshal(map[string]interface{}{"availability": true})
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("500 - Internal Error"))
-			return
-		}
-		request, err := http.NewRequest("PATCH", url, bytes.NewBuffer(newReqBody))
-		if err != nil {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			w.Write([]byte("503 - Driver Endpoint Unavailable"))
-			return
-		}
-		request.Header.Set("Content-Type", "application/json")
-		client := &http.Client{}
-		client.Do(request)
-
-		w.Write([]byte("200 - Trip updated"))
-	}
-
-}
-
-func currentTripHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:8080")
-	w.Header().Set("Access-Control-Allow-Credentials", "true")
-	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization")
-
-	if r.Method == http.MethodOptions {
-		return
-	}
-
-	if r.Method == "GET" {
-		jwt, err := r.Cookie("jwt")
-		if err != nil {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte("401 - No authorized cookie"))
-			return
-		}
-		id, isPassenger, errorStatusCode, errorText := getAuthDetails(jwt.Value)
-		if errorStatusCode != 0 {
-			w.WriteHeader(errorStatusCode)
-			w.Write([]byte(errorText))
-			return
-		}
-		var query string
-		if isPassenger {
-			query = fmt.Sprintf("select * from trip where passenger_id=%d order by requested desc limit 1", id)
-		} else {
-			query = fmt.Sprintf("select * from trip where driver_id=%d and end is null order by requested desc limit 1;", id)
-		}
-		results := database.QueryRow(query)
-		var trip trip
-		err = results.Scan(&trip.ID, &trip.PickUp, &trip.DropOff, &trip.PassengerID, &trip.DriverID, &trip.Requested, &trip.Start, &trip.End)
-		if err != nil {
-			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte("404 - No current trip"))
-			return
-		}
-		json.NewEncoder(w).Encode(trip)
-	}
-}
-
 func tripHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:8080")
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
@@ -272,8 +84,19 @@ func tripHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == "GET" {
-		query := fmt.Sprintf("select * from trip where passenger_id=%d order by requested desc", id)
-		results, err := database.Query(query)
+		query := ""
+		if isPassenger {
+			query = "select * from trip where passenger_id=? order by requested desc"
+		} else if !isPassenger {
+			query = "select * from trip where driver_id=? order by requested desc"
+		}
+		kv := r.URL.Query()
+		if kv.Get("current") == "true" {
+			if !isPassenger {
+				query = "select * from trip where driver_id=? and end is null order by requested desc limit 1;"
+			}
+		}
+		results, err := database.Query(query, id)
 		if err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			w.Write([]byte("503 - Database Unavailable"))
@@ -292,7 +115,15 @@ func tripHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			trips = append(trips, trip)
 		}
-
+		if kv.Get("current") == "true" {
+			if len(trips) == 0 {
+				w.WriteHeader(http.StatusNotFound)
+				w.Write([]byte("404 - No current trip"))
+				return
+			}
+			json.NewEncoder(w).Encode(trips[0])
+			return
+		}
 		json.NewEncoder(w).Encode(trips)
 	}
 
@@ -323,7 +154,7 @@ func tripHandler(w http.ResponseWriter, r *http.Request) {
 			var last_name string
 			var license_number string
 			// Get available driver
-			resp, err := http.Get(os.Getenv("DRIVER_MS_HOST") + "/api/v1/drivers/available")
+			resp, err := http.Get(os.Getenv("DRIVER_MS_HOST") + "/api/v1/drivers?available=true")
 			if err == nil {
 				defer resp.Body.Close()
 				if body, err := ioutil.ReadAll(resp.Body); err == nil {
@@ -345,9 +176,9 @@ func tripHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			query := fmt.Sprintf("INSERT INTO trip (pickup,dropoff,passenger_id,driver_id,requested) VALUES ('%s','%s',%d,%d,NOW())", trip.PickUp, trip.DropOff, id, driver_id)
+			query := "INSERT INTO trip (pickup,dropoff,passenger_id,driver_id,requested) VALUES (?,?,?,?,NOW())"
 
-			_, err = database.Query(query)
+			_, err = database.Query(query, trip.PickUp, trip.DropOff, id, driver_id)
 			if err != nil {
 				w.WriteHeader(http.StatusServiceUnavailable)
 				w.Write([]byte("503 - Database Unavailable"))
@@ -355,8 +186,8 @@ func tripHandler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// Update availability of driver
-			url := fmt.Sprintf(os.Getenv("DRIVER_MS_HOST")+"/api/v1/drivers/%d/availability", driver_id)
-			newReqBody, err := json.Marshal(map[string]interface{}{"availability": false})
+			url := fmt.Sprintf(os.Getenv("DRIVER_MS_HOST") + "/api/v1/drivers?availability=true")
+			newReqBody, err := json.Marshal(map[string]interface{}{"availability": false, "ID": driver_id})
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte("500 - Internal Error"))
@@ -374,6 +205,101 @@ func tripHandler(w http.ResponseWriter, r *http.Request) {
 
 			// return driver
 			json.NewEncoder(w).Encode(map[string]interface{}{"FirstName": first_name, "LastName": last_name, "LicenseNumber": license_number})
+		}
+		if r.Method == "PATCH" {
+			reqBody, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				w.WriteHeader(http.StatusUnprocessableEntity)
+				w.Write([]byte("422 - Please supply course information in JSON format"))
+				return
+			}
+			var bodyData map[string]interface{}
+			json.Unmarshal(reqBody, &bodyData)
+			tripID := bodyData["ID"]
+			kv := r.URL.Query()
+			start := kv.Get("start")
+			end := kv.Get("end")
+			// Call MUST have end or start query
+			if start != "true" && end != "true" {
+				w.WriteHeader(http.StatusNotAcceptable)
+				w.Write([]byte("406 - Invalid request"))
+				return
+			}
+			jwt, err := r.Cookie("jwt")
+			if err != nil {
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte("401 - No authorized cookie"))
+				return
+			}
+			// authenticate user
+			id, isPassenger, errorStatusCode, errorText := getAuthDetails(jwt.Value)
+			if errorStatusCode != 0 {
+				w.WriteHeader(errorStatusCode)
+				w.Write([]byte(errorText))
+				return
+			}
+			// Only drivers can update
+			if isPassenger {
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte("401 - Unauthorized to perform action"))
+				return
+			}
+
+			var driver_id int
+
+			// GET trip
+			query := "select driver_id from trip where id=?"
+			results, err := database.Query(query, tripID)
+			if err != nil {
+				w.WriteHeader(http.StatusServiceUnavailable)
+				w.Write([]byte("503 - Database Unavailable"))
+				return
+			}
+			results.Next()
+			err = results.Scan(&driver_id)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte("500 - Internal Error"))
+				return
+			}
+			if driver_id != id {
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte("401 - Unauthorized to perform action"))
+				return
+			}
+			query = ""
+			if start == "true" {
+				query = "UPDATE trip SET start=NOW() where id=?"
+			} else if end == "true" {
+				query = "UPDATE trip SET end=NOW() where id=?"
+			}
+			_, err = database.Query(query, tripID)
+			if err != nil {
+				w.WriteHeader(http.StatusServiceUnavailable)
+				w.Write([]byte("503 - Database Unavailable"))
+				return
+			}
+
+			if end == "true" {
+				// Update availability of driver - only if ending trip
+				url := fmt.Sprintf(os.Getenv("DRIVER_MS_HOST")+"/api/v1/drivers?availability=true&id=", driver_id)
+				newReqBody, err := json.Marshal(map[string]interface{}{"availability": true})
+				if err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+					w.Write([]byte("500 - Internal Error"))
+					return
+				}
+				request, err := http.NewRequest("PATCH", url, bytes.NewBuffer(newReqBody))
+				if err != nil {
+					w.WriteHeader(http.StatusServiceUnavailable)
+					w.Write([]byte("503 - Driver Endpoint Unavailable"))
+					return
+				}
+				request.Header.Set("Content-Type", "application/json")
+				client := &http.Client{}
+				client.Do(request)
+			}
+			w.Write([]byte("200 - Trip updated"))
 		}
 	}
 }
@@ -398,10 +324,7 @@ func main() {
 
 	router := mux.NewRouter()
 
-	router.HandleFunc("/api/v1/trips", tripHandler).Methods(http.MethodPost, http.MethodOptions, http.MethodGet)
-	router.HandleFunc("/api/v1/trip/{ID}/start", startTripHandler).Methods(http.MethodPost, http.MethodOptions)
-	router.HandleFunc("/api/v1/trip/{ID}/end", endTripHandler).Methods(http.MethodPost, http.MethodOptions)
-	router.HandleFunc("/api/v1/current-trip", currentTripHandler).Methods(http.MethodOptions, http.MethodGet)
+	router.HandleFunc("/api/v1/trips", tripHandler).Methods(http.MethodPost, http.MethodOptions, http.MethodGet, http.MethodPatch)
 	router.Use(mux.CORSMethodMiddleware(router))
 	fmt.Println("Trips Microservice")
 	fmt.Println("Listening at port 5004")
