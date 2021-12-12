@@ -207,10 +207,13 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	// Not very sure about the usage of DELETE in this situation.
-	// Think should create new endpoint?
-	// Method removes cookie from client
-	if r.Method == "DELETE" {
+}
+func signOutHandler(w http.ResponseWriter, r *http.Request) {
+	// set CORS headers
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:8080")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization")
+	if r.Method == "POST" {
 		// Sets response header to delete cookie from browser
 		// For signing out of the website
 		cookie := &http.Cookie{Name: "jwt", Value: "", MaxAge: 0, Path: "/", SameSite: http.SameSiteStrictMode, HttpOnly: true}
@@ -226,7 +229,8 @@ func main() {
 	}
 	router := mux.NewRouter()
 	router.HandleFunc("/api/v1/login", loginHandler)
-	router.HandleFunc("/api/v1/authorize", authHandler).Methods(http.MethodPost, http.MethodGet, http.MethodDelete, http.MethodOptions)
+	router.HandleFunc("/api/v1/authorize", authHandler).Methods(http.MethodPost, http.MethodGet, http.MethodOptions)
+	router.HandleFunc("/api/v1/sign-out", signOutHandler).Methods(http.MethodPost, http.MethodOptions)
 	router.Use(mux.CORSMethodMiddleware(router))
 	fmt.Println("Authentication Microservice")
 	fmt.Println("Listening at port 5003")

@@ -30,8 +30,8 @@ export default {
     },
     methods:{
       async signOut(){
-        await fetch(process.env.VUE_APP_AUTH_MS_HOST+"/api/v1/authorize",{
-            method:"DELETE",
+        await fetch(process.env.VUE_APP_AUTH_MS_HOST+"/api/v1/sign-out",{
+            method:"POST",
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': "Bearer " +  store.state.jwtAccessToken

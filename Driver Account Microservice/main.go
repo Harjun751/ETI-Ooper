@@ -99,8 +99,10 @@ func driversHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "GET" {
 		kv := r.URL.Query()
-		if kv.Get("available")=="true"{
-			// Obtain available driver onlys
+		// If "available=true" is in query string,
+		// Only returns 1 available driver
+		if kv.Get("available") == "true" {
+			// Obtain available driver only
 			results, err := database.Query("select id,first_name,last_name,license_number from driver where available=true limit 1;")
 			if err != nil {
 				w.WriteHeader(http.StatusServiceUnavailable)
@@ -127,6 +129,7 @@ func driversHandler(w http.ResponseWriter, r *http.Request) {
 			json.NewEncoder(w).Encode(map[string]interface{}{"ID": id, "FirstName": firstName, "LastName": lastName, "LicenseNumber": licenseNumber})
 			return
 		}
+		// Else, obtains a specific user given their ID/email
 		id := kv["id"]
 		email := kv["email"]
 		var results *sql.Rows
@@ -175,9 +178,10 @@ func driversHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			// get salt and hash of password
+			// create salt and hash of password
 			salt, hash := saltNHash(newDriver.Password)
 
+			// insert all details
 			_, err = database.Query("INSERT INTO driver (first_name,last_name,mobile_number,email,ic_number,license_number,password,salt) VALUES (?, ?, ?, ?, ?, ?,?,?)", newDriver.FirstName, newDriver.LastName, newDriver.MobileNumber, newDriver.Email, newDriver.ICNumber, newDriver.LicenseNumber, hash, salt)
 			if err != nil {
 				w.WriteHeader(http.StatusServiceUnavailable)
@@ -190,8 +194,9 @@ func driversHandler(w http.ResponseWriter, r *http.Request) {
 
 		if r.Method == "PATCH" {
 			kv := r.URL.Query()
-			if kv.Get("availability")=="true"{
-				// Only update availability of the driver
+			// if "availability=true"
+			// Only update availability of the driver
+			if kv.Get("availability") == "true" {
 				reqBody, err := ioutil.ReadAll(r.Body)
 				if err != nil {
 					w.WriteHeader(http.StatusUnprocessableEntity)
@@ -217,21 +222,24 @@ func driversHandler(w http.ResponseWriter, r *http.Request) {
 				w.Write([]byte("200 - Updated"))
 				return
 			}
+			// Else, update driver's personal details
 			var newDriver driver
 			reqBody, err := ioutil.ReadAll(r.Body)
-			// authorize user - obtain jwt details from auth microservice
+			// Obtain jwt cookie from  response
 			jwt, err := r.Cookie("jwt")
 			if err != nil {
 				w.WriteHeader(http.StatusUnauthorized)
 				w.Write([]byte("401 - No authorized cookie"))
 				return
 			}
+			// authorize user - obtain jwt details from auth microservice
 			id, isPassenger, errorStatusCode, errorText := getAuthDetails(jwt.Value)
 			if errorStatusCode != 0 {
 				w.WriteHeader(errorStatusCode)
 				w.Write([]byte(errorText))
 				return
 			}
+			// Only non-passengers allowed to edit
 			if isPassenger {
 				w.WriteHeader(http.StatusUnprocessableEntity)
 				w.Write([]byte("401 - Unauthorized"))
@@ -253,6 +261,7 @@ func driversHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
+			// Update driver with all values given
 			_, err = database.Query("UPDATE driver SET first_name=?,last_name=?,mobile_number=?,email=?,license_number=? WHERE ID=?;", newDriver.FirstName, newDriver.LastName, newDriver.MobileNumber, newDriver.Email, newDriver.LicenseNumber, id)
 			if err != nil {
 				w.WriteHeader(http.StatusServiceUnavailable)
