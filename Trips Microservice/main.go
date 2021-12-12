@@ -225,19 +225,6 @@ func tripHandler(w http.ResponseWriter, r *http.Request) {
 				w.Write([]byte("406 - Invalid request"))
 				return
 			}
-			jwt, err := r.Cookie("jwt")
-			if err != nil {
-				w.WriteHeader(http.StatusUnauthorized)
-				w.Write([]byte("401 - No authorized cookie"))
-				return
-			}
-			// authenticate user
-			id, isPassenger, errorStatusCode, errorText := getAuthDetails(jwt.Value)
-			if errorStatusCode != 0 {
-				w.WriteHeader(errorStatusCode)
-				w.Write([]byte(errorText))
-				return
-			}
 			// Only drivers can update
 			if isPassenger {
 				w.WriteHeader(http.StatusUnauthorized)
@@ -247,7 +234,7 @@ func tripHandler(w http.ResponseWriter, r *http.Request) {
 
 			var driver_id int
 
-			// GET trip
+			// GET driver id from trip
 			query := "select driver_id from trip where id=?"
 			results, err := database.Query(query, tripID)
 			if err != nil {
@@ -262,6 +249,7 @@ func tripHandler(w http.ResponseWriter, r *http.Request) {
 				w.Write([]byte("500 - Internal Error"))
 				return
 			}
+			// Check if driver id coincides with id of requester
 			if driver_id != id {
 				w.WriteHeader(http.StatusUnauthorized)
 				w.Write([]byte("401 - Unauthorized to perform action"))

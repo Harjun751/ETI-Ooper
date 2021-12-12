@@ -70,11 +70,7 @@ export default {
                             confirmButton: 'custom-swal-button'
                         }
                     })
-<<<<<<< HEAD
                     throw("auth failed")
-=======
-                    throw("failed")
->>>>>>> 0d146dbd90384e433f1ce832270cc51fdda337d4
                 }
             })
             .then(()=>{
