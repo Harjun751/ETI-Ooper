@@ -4,13 +4,14 @@ Ooper is a ride sharing platform created for an assignment. It utilizes a micros
 
 # Microservices & Operations
 
-| Microservice   | Endpoint           | Methods           | Description                                                                                                                            |
-| -------------- | ------------------ | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Authentication | /api/v1/login      | POST              | Authenticates user using hashing and salting, and returns a JWT                                                                        |
-| Authorization  | /api/v1/authorize  | POST, GET, DELETE | Decodes JWT and returns isPassenger and ID. POST takes JWT from body, while GET takes JWT from cookies. DELETE removes the jwt cookie. |
-| Driver         | /api/v1/drivers    | PATCH, POST, GET  | Creates a new driver object, Gets a driver, or updates a driver                                                                        |
-| Passenger      | /api/v1/passengers | PATCH, POST, GET  | Creates a new passenger object, Gets a passenger, or updates a passenger                                                               |
-| Trip           | /api/v1/trips      | PATCH, POST, GET  | Obtains all trips for a passenger, or creates a new trip with an assigned driver                                                       |
+| Microservice   | Endpoint           | Methods          | Description                                                                                            |
+| -------------- | ------------------ | ---------------- | ------------------------------------------------------------------------------------------------------ |
+| Authentication | /api/v1/login      | POST             | Authenticates user using hashing and salting, and returns a JWT                                        |
+| Authentication | /api/v1/authorize  | POST, GET        | Decodes JWT and returns isPassenger and ID. POST takes JWT from body, while GET takes JWT from cookies |
+| Authentication | /api/v1/sign-out   | DELETE           | Removes JWT cookie                                                                                     |
+| Driver         | /api/v1/drivers    | PATCH, POST, GET | Creates a new driver object, Gets a driver, or updates a driver                                        |
+| Passenger      | /api/v1/passengers | PATCH, POST, GET | Creates a new passenger object, Gets a passenger, or updates a passenger                               |
+| Trip           | /api/v1/trips      | PATCH, POST, GET | Obtains all trips for a passenger, or creates a new trip with an assigned driver                       |
 
 _Most endpoints also accept the OPTIONS method for CORS requests_
 
@@ -101,3 +102,5 @@ For the docker-compose file to work, it requires 'trip.sql', 'passenger.sql', an
 
 1. Run docker-compose -f ".\docker-compose-multistage-image.yml" up -d
 2. Go to http://localhost:8080 to access the application
+
+NOTE: Images have not been published on dockerhub yet. The docker-compose file builds the image from the individual dockerfiles for each microservice.
