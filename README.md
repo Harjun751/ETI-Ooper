@@ -4,13 +4,13 @@ Ooper is a ride sharing platform created for an assignment. It utilizes a micros
 
 # Microservices & Operations
 
-| Microservice   | Endpoint                          | Methods          | Description                                                                      |
-| -------------- | --------------------------------- | ---------------- | -------------------------------------------------------------------------------- |
-| Authentication | /api/v1/login                     | POST             | Authenticates user using hashing and salting, and returns a JWT                  |
-| Authorization  | /api/v1/authorize | POST, GET, DELETE | Decodes JWT and returns isPassenger and ID. POST takes JWT from body, while GET takes JWT from cookies. DELETE removes the jwt cookie.|
-| Driver         | /api/v1/drivers                   | PATCH, POST, GET | Creates a new driver object, Gets a driver, or updates a driver                  |
-| Passenger      | /api/v1/passengers                | PATCH, POST, GET | Creates a new passenger object, Gets a passenger, or updates a passenger         |
-| Trip           | /api/v1/trips                     | PATCH, POST, GET | Obtains all trips for a passenger, or creates a new trip with an assigned driver |
+| Microservice   | Endpoint           | Methods           | Description                                                                                                                            |
+| -------------- | ------------------ | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Authentication | /api/v1/login      | POST              | Authenticates user using hashing and salting, and returns a JWT                                                                        |
+| Authorization  | /api/v1/authorize  | POST, GET, DELETE | Decodes JWT and returns isPassenger and ID. POST takes JWT from body, while GET takes JWT from cookies. DELETE removes the jwt cookie. |
+| Driver         | /api/v1/drivers    | PATCH, POST, GET  | Creates a new driver object, Gets a driver, or updates a driver                                                                        |
+| Passenger      | /api/v1/passengers | PATCH, POST, GET  | Creates a new passenger object, Gets a passenger, or updates a passenger                                                               |
+| Trip           | /api/v1/trips      | PATCH, POST, GET  | Obtains all trips for a passenger, or creates a new trip with an assigned driver                                                       |
 
 _Most endpoints also accept the OPTIONS method for CORS requests_
 
@@ -97,5 +97,7 @@ If this is not so, uncomment the last two lines of the DB create script **OR** c
 
 ## Docker Compose
 
-1. Run docker-compose up -d
+For the docker-compose file to work, it requires 'trip.sql', 'passenger.sql', and 'driver.sql'. View the bind mound location in the docker-compose file to put the files in the correct directory, or change where they point to by default. (If you're cloning the repo and running the docker-compose, there'll be no issue.)
+
+1. Run docker-compose -f ".\docker-compose-multistage-image.yml" up -d
 2. Go to http://localhost:8080 to access the application

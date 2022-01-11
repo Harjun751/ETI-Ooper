@@ -1,0 +1,27 @@
+# syntax=docker/dockerfile:1
+## Build application
+
+FROM golang:1.16-alpine as BUILD
+WORKDIR /app
+
+# Copy go module files to download all required modules
+COPY go.mod ./
+COPY go.sum ./
+RUN go mod download
+
+COPY main.go ./
+
+#Bulid file as "passenger" and run
+RUN CGO_ENABLED=0 go build -o /passenger
+
+# ## Deploy app using distroless image
+FROM gcr.io/distroless/static
+WORKDIR /
+
+COPY --from=build /passenger /passenger
+
+EXPOSE 5000
+
+USER nonroot:nonroot
+
+ENTRYPOINT ["/passenger"]

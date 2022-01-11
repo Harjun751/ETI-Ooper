@@ -1,0 +1,27 @@
+# syntax=docker/dockerfile:1
+## Build application
+
+FROM node:12.18.1 AS build
+WORKDIR /app
+
+# Add package json to  workdir
+COPY ["package.json", "package-lock.json*", "./"]
+# Install all required  packages
+RUN npm install
+RUN npm install http-server-spa
+
+# Add source code to workdir
+COPY . .
+RUN npm run build
+
+# ## Deploy app using distroless image
+FROM gcr.io/distroless/nodejs:16
+WORKDIR /
+
+COPY --from=build /app/dist /dist
+COPY --from=build /app/node_modules/http-server-spa /http-server-spa
+
+EXPOSE 8080
+
+USER nonroot:nonroot
+CMD [ "/http-server-spa/server.js", "dist" ]
