@@ -1,4 +1,5 @@
 # ETI-Ooper
+![OoperFrontEnd](mdImages/frontend.gif)
 
 Ooper is a ride sharing platform created for an assignment. It utilizes a microservice architecture coded in Go for the backend of the application, and uses VueJS as the frontend framework.
 
