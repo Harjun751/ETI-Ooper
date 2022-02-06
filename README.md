@@ -103,5 +103,3 @@ For the docker-compose file to work, it requires 'trip.sql', 'passenger.sql', an
 
 1. Run docker-compose -f ".\docker-compose-multistage-image.yml" up -d
 2. Go to http://localhost:8080 to access the application
-
-NOTE: Images have not been published on dockerhub yet. The docker-compose file builds the image from the individual dockerfiles for each microservice.
